@@ -3,7 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "OR Captcha",
+  title: "Captcha",
   description: "Earn rewards by solving captchas.",
 };
 

@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  Captions,
   Gift,
   Home,
   LogIn,
@@ -16,13 +17,6 @@ const navLinks = [
     { href: "/withdraw", label: "Withdraw", icon: Gift },
 ];
 
-const OrLogo = () => (
-    <div className="flex items-center justify-center h-6 w-6 rounded-sm bg-destructive text-destructive-foreground">
-        <span className="text-xs font-bold tracking-tighter">OR</span>
-    </div>
-)
-
-
 export default function Header() {
   const pathname = usePathname();
   
@@ -31,8 +25,8 @@ export default function Header() {
       <div className="container flex h-16 items-center">
         <div className="mr-4 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <OrLogo />
-            <span className="font-headline">OR Captcha</span>
+            <Captions className="text-primary w-6 h-6" />
+            <span className="font-headline">Captcha</span>
           </Link>
         </div>
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
