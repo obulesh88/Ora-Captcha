@@ -1,7 +1,7 @@
 "use client"
 
 import {
-  DollarSign,
+  Captions,
   Gift,
   Home,
   LogIn,
@@ -25,7 +25,7 @@ export default function Header() {
       <div className="container flex h-16 items-center">
         <div className="mr-4 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <DollarSign className="h-6 w-6 text-primary" />
+            <Captions className="h-6 w-6 text-primary" />
             <span className="font-headline">Captcha</span>
           </Link>
         </div>
