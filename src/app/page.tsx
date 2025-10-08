@@ -24,7 +24,7 @@ export default function Home() {
             <CardContent>
               <Button className="w-full" size="lg">
                 <PlayCircle className="mr-2 h-5 w-5" />
-                Watch Rewarded Ad (50 ORA Coins)
+                Watch Rewarded Ad (3 ORA Coins)
               </Button>
             </CardContent>
           </Card>
