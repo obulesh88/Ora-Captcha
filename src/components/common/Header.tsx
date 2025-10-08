@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  Captions,
   Gift,
   Home,
   LogIn,
@@ -25,7 +24,9 @@ export default function Header() {
       <div className="container flex h-16 items-center">
         <div className="mr-4 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <Captions className="text-primary w-6 h-6" />
+            <div className="w-6 h-6 flex items-center justify-center font-bold text-red-500">
+              OR
+            </div>
             <span className="font-headline">Captcha</span>
           </Link>
         </div>
