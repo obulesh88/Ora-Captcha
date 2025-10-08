@@ -5,7 +5,6 @@ import {
   Gift,
   Home,
   LogOut,
-  User,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
@@ -75,11 +74,6 @@ export default function Header() {
                   </p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/login">
