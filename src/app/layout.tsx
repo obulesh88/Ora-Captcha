@@ -5,7 +5,7 @@ import { Sidebar, SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import SideNav from "@/components/common/SideNav";
 
 export const metadata: Metadata = {
-  title: "Captcha",
+  title: "ORA Captcha",
   description: "Earn rewards by solving captchas.",
 };
 

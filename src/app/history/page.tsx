@@ -55,7 +55,7 @@ export default function HistoryPage() {
                       className="text-white"
                     >
                       {transaction.amount > 0 ? "+" : ""}
-                      {transaction.amount.toLocaleString()} 🪙
+                      {transaction.amount.toLocaleString()} ORA 🪙
                     </Badge>
                   </TableCell>
                 </TableRow>

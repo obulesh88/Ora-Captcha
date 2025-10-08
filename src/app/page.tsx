@@ -15,16 +15,16 @@ export default function Home() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlayCircle className="text-primary w-6 h-6" />
-                <span>Earn Bonus Coins</span>
+                <span>Earn Bonus ORA Coins</span>
               </CardTitle>
               <CardDescription>
-                Watch a short ad to earn extra coins. It's a quick and easy way to boost your balance!
+                Watch a short ad to earn extra ORA coins. It's a quick and easy way to boost your balance!
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full" size="lg">
                 <PlayCircle className="mr-2 h-5 w-5" />
-                Watch Rewarded Ad (50 Coins)
+                Watch Rewarded Ad (50 ORA Coins)
               </Button>
             </CardContent>
           </Card>

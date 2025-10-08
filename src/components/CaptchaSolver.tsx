@@ -74,7 +74,7 @@ export default function CaptchaSolver() {
         setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
         toast({
           title: "Success!",
-          description: `You've earned ${earnedCoins} coins.`,
+          description: `You've earned ${earnedCoins} ORA coins.`,
           className: "bg-accent text-accent-foreground",
         });
         generateNewCaptcha();
@@ -99,7 +99,7 @@ export default function CaptchaSolver() {
             <span>Solve Captcha & Earn</span>
         </CardTitle>
         <CardDescription>
-          Type the characters you see in the image to earn coins.
+          Type the characters you see in the image to earn ORA coins.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

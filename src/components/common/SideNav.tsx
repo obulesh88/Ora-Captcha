@@ -27,7 +27,7 @@ export default function SideNav() {
             <div className="w-8 h-8 flex items-center justify-center font-bold text-red-500 text-2xl">
               OR
             </div>
-            <span className="font-headline">Captcha</span>
+            <span className="font-headline">ORA Captcha</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
