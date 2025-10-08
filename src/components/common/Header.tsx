@@ -1,7 +1,8 @@
 "use client"
 
 import {
-  Gift,
+  CreditCard,
+  History,
   Home,
   LogIn,
   UserPlus,
@@ -12,8 +13,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-    { href: "/", label: "Dashboard", icon: Home },
-    { href: "/withdraw", label: "Withdraw", icon: Gift },
+    { href: "/", label: "Home", icon: Home },
+    { href: "/wallet", label: "Wallet", icon: CreditCard },
+    { href: "/history", label: "History", icon: History },
 ];
 
 export default function Header() {

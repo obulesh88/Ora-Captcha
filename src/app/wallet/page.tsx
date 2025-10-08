@@ -35,7 +35,7 @@ const rewards = [
   },
 ];
 
-export default function WithdrawPage() {
+export default function WalletPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
