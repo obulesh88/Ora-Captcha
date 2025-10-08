@@ -69,7 +69,7 @@ export default function CaptchaSolver() {
 
     setTimeout(() => {
       if (userInput.toLowerCase() === captchaText.toLowerCase()) {
-        const earnedCoins = 10 + Math.floor(Math.random() * 6);
+        const earnedCoins = 2;
         setBalance((prev) => prev + earnedCoins);
         setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
         toast({
