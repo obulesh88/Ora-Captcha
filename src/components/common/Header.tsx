@@ -29,18 +29,6 @@ export default function Header() {
                 <span>Balance:</span>
                 <span className="font-mono">1,250 🪙</span>
             </div>
-            <Link href="/login">
-              <Button>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  <span>Login</span>
-              </Button>
-            </Link>
-             <Link href="/signup">
-              <Button variant="outline">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  <span>Sign Up</span>
-              </Button>
-            </Link>
         </div>
       </div>
     </header>
