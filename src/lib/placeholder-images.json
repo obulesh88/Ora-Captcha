@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "amazon-gift-card",
+      "description": "An Amazon gift card.",
+      "imageUrl": "https://picsum.photos/seed/10/300/180",
+      "imageHint": "amazon logo"
+    },
+    {
+      "id": "paytm-cash",
+      "description": "Paytm wallet cash.",
+      "imageUrl": "https://picsum.photos/seed/11/300/180",
+      "imageHint": "paytm logo"
+    },
+    {
+      "id": "google-play-card",
+      "description": "Google Play gift card.",
+      "imageUrl": "https://picsum.photos/seed/12/300/180",
+      "imageHint": "google play logo"
+    },
+    {
+      "id": "wallet-balance",
+      "description": "Generic app wallet balance.",
+      "imageUrl": "https://picsum.photos/seed/13/300/180",
+      "imageHint": "wallet money"
+    }
+  ]
 }
