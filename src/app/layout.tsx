@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Sidebar, SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import SideNav from "@/components/common/SideNav";
 
 export const metadata: Metadata = {
   title: "Captcha",
@@ -23,8 +25,15 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body bg-background text-foreground antialiased">
-        {children}
-        <Toaster />
+        <SidebarProvider>
+            <Sidebar>
+                <SideNav />
+            </Sidebar>
+            <SidebarInset>
+                {children}
+                <Toaster />
+            </SidebarInset>
+        </SidebarProvider>
       </body>
     </html>
   );
