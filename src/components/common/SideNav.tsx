@@ -34,15 +34,15 @@ export default function SideNav() {
         <SidebarMenu>
           {navLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
-              <Link href={link.href} legacyBehavior passHref>
-                <SidebarMenuButton
-                  as="a"
-                  isActive={pathname === link.href}
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === link.href}
+              >
+                <Link href={link.href}>
                   <link.icon />
                   <span>{link.label}</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
