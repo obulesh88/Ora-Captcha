@@ -4,19 +4,11 @@ import {
   DollarSign,
   Gift,
   Home,
-  LogOut,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -51,15 +43,21 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        <div className="flex flex-1 items-center justify-end space-x-2">
             <div className="hidden sm:flex items-center gap-2 rounded-full bg-accent text-accent-foreground px-4 py-1.5 text-sm font-semibold">
                 <span>Balance:</span>
                 <span className="font-mono">1,250 🪙</span>
             </div>
             <Link href="/login">
+              <Button>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  <span>Login</span>
+              </Button>
+            </Link>
+             <Link href="/signup">
               <Button variant="outline">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  <span>Sign Up</span>
               </Button>
             </Link>
         </div>
