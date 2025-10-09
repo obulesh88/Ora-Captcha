@@ -31,7 +31,6 @@ export default function SignupPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -52,7 +51,7 @@ export default function SignupPage() {
         uid: loggedInUser.uid,
         email: loggedInUser.email,
         displayName: loggedInUser.email, 
-        walletAddress: walletAddress,
+        walletAddress: "",
         createdAt: new Date(),
         balance: 0,
       };
@@ -69,7 +68,7 @@ export default function SignupPage() {
       
       toast({
         title: 'Account Created!',
-        description: 'Your ORA Wallet has been linked.',
+        description: "You're now ready to start earning.",
         className: 'bg-accent text-accent-foreground',
       });
       
@@ -116,17 +115,6 @@ export default function SignupPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="walletAddress">ORA Wallet Address</Label>
-                <Input
-                  id="walletAddress"
-                  type="text"
-                  placeholder="0x..."
-                  required
-                  value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
                 />
               </div>
             </CardContent>

@@ -42,6 +42,7 @@ export default function WalletPage() {
   const [redeemAmount, setRedeemAmount] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [isSavingWallet, setIsSavingWallet] = useState(false);
+  const [showConnectForm, setShowConnectForm] = useState(false);
   const { toast } = useToast();
   
   const walletAddress = userProfile?.walletAddress;
@@ -81,6 +82,7 @@ export default function WalletPage() {
         className: 'bg-accent text-accent-foreground',
       });
       setNewWalletAddress('');
+      setShowConnectForm(false);
     } catch (error) {
        const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
@@ -188,46 +190,59 @@ export default function WalletPage() {
                 Connect Your ORA Wallet
               </h1>
               <p className="text-muted-foreground">
-                Enter your wallet address to start redeeming coins.
+                Connect your wallet to start redeeming coins.
               </p>
             </div>
             <Card className="max-w-md mx-auto">
-              <form onSubmit={handleSaveWallet}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="w-6 h-6 text-primary" />
-                    Enter Your Wallet Address
-                  </CardTitle>
-                   <CardDescription>
-                    Please provide your ORA wallet address to link it to your account.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label htmlFor="wallet-address">ORA Wallet Address</Label>
-                    <Input
-                      id="wallet-address"
-                      type="text"
-                      placeholder="0x..."
-                      value={newWalletAddress}
-                      onChange={(e) => setNewWalletAddress(e.target.value)}
-                      required
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-2">
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    type="submit"
-                    disabled={isSavingWallet}
-                  >
+              {!showConnectForm ? (
+                <CardContent className="p-6 text-center">
+                  <Button size="lg" onClick={() => setShowConnectForm(true)}>
                     <Wallet className="mr-2 h-5 w-5" />
-                    {isSavingWallet ? 'Saving...' : 'Save Wallet Address'}
+                    Connect Wallet
                   </Button>
-                   <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs">Disconnect</Button>
-                </CardFooter>
-              </form>
+                   <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs mt-4">Disconnect</Button>
+                </CardContent>
+              ) : (
+                <form onSubmit={handleSaveWallet}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wallet className="w-6 h-6 text-primary" />
+                      Enter Your Wallet Address
+                    </CardTitle>
+                    <CardDescription>
+                      Please provide your ORA wallet address to link it to your
+                      account.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label htmlFor="wallet-address">ORA Wallet Address</Label>
+                      <Input
+                        id="wallet-address"
+                        type="text"
+                        placeholder="0x..."
+                        value={newWalletAddress}
+                        onChange={(e) => setNewWalletAddress(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2">
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      type="submit"
+                      disabled={isSavingWallet}
+                    >
+                      <Wallet className="mr-2 h-5 w-5" />
+                      {isSavingWallet ? 'Saving...' : 'Save Wallet Address'}
+                    </Button>
+                    <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs">
+                      Disconnect
+                    </Button>
+                  </CardFooter>
+                </form>
+              )}
             </Card>
           </>
         ) : (
