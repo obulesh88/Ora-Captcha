@@ -14,21 +14,81 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { useUser, useAuth, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function WalletPage() {
-  const [isConnected, setIsConnected] = useState(false);
+  const { user, loading } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [redeemAmount, setRedeemAmount] = useState('');
   const [balance] = useState(1250); // Using local state for now
   const { toast } = useToast();
 
-  const handleConnect = () => {
+  useEffect(() => {
+    if (user) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      getDoc(userDocRef).then((docSnap) => {
+        if (docSnap.exists()) {
+          setWalletAddress(docSnap.data().walletAddress);
+        }
+      });
+    } else {
+      setWalletAddress(null);
+    }
+  }, [user, firestore]);
+
+  const handleConnect = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const loggedInUser = result.user;
+      
+      const userDocRef = doc(firestore, 'users', loggedInUser.uid);
+      const docSnap = await getDoc(userDocRef);
+
+      let newWalletAddress = '';
+      if (docSnap.exists()) {
+        newWalletAddress = docSnap.data().walletAddress;
+      } else {
+        // Generate a new unique wallet address
+        newWalletAddress = `0x${[...Array(40)]
+          .map(() => Math.floor(Math.random() * 16).toString(16))
+          .join('')}`;
+        await setDoc(userDocRef, {
+          email: loggedInUser.email,
+          displayName: loggedInUser.displayName,
+          walletAddress: newWalletAddress,
+          createdAt: new Date(),
+        });
+      }
+      setWalletAddress(newWalletAddress);
+
+      toast({
+        title: 'Wallet Connected',
+        description: `Your ORA Wallet has been successfully connected. Your address is ${newWalletAddress}`,
+        className: 'bg-accent text-accent-foreground truncate',
+      });
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Connection Failed',
+        description: 'Could not connect to your wallet.',
+      });
+    }
+  };
+
+  const handleDisconnect = async () => {
+    await signOut(auth);
+    setWalletAddress(null);
     toast({
-      title: 'Wallet Connected',
-      description: 'Your ORA Wallet has been successfully connected.',
-      className: 'bg-accent text-accent-foreground',
+      title: 'Wallet Disconnected',
+      description: 'You have been disconnected from your ORA Wallet.',
     });
-    setIsConnected(true);
   };
 
   const handleRedeem = (e: React.FormEvent) => {
@@ -38,7 +98,7 @@ export default function WalletPage() {
       toast({
         variant: 'destructive',
         title: 'Invalid Amount',
-        description: 'Please enter a valid number of coins to redeem.',
+        description: 'Please enter a valid number of ORA coins to redeem.',
       });
       return;
     }
@@ -72,7 +132,7 @@ export default function WalletPage() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8">
-        {!isConnected ? (
+        {!user || !walletAddress ? (
           <>
             <div className="space-y-4 mb-8">
               <h1 className="text-3xl font-bold tracking-tight">
@@ -99,9 +159,10 @@ export default function WalletPage() {
                   className="w-full"
                   size="lg"
                   onClick={handleConnect}
+                  disabled={loading}
                 >
                   <Wallet className="mr-2 h-5 w-5" />
-                  Connect Wallet
+                  {loading ? 'Loading...' : 'Connect with Google'}
                 </Button>
               </CardContent>
             </Card>
@@ -112,13 +173,20 @@ export default function WalletPage() {
               <h1 className="text-3xl font-bold tracking-tight">
                 Redeem ORA Coins
               </h1>
-              <p className="text-muted-foreground">
-                Your current balance is{' '}
-                <span className="font-bold text-primary">
-                  {balance.toLocaleString()} ORA 🪙
-                </span>
-                .
-              </p>
+              <div className="text-muted-foreground">
+                <p>
+                  Your current balance is{' '}
+                  <span className="font-bold text-primary">
+                    {balance.toLocaleString()} ORA 🪙
+                  </span>
+                  .
+                </p>
+                <p className="text-sm truncate">
+                  Connected as: {user.email} <br/>
+                  Wallet: {walletAddress}
+                </p>
+                <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs">Disconnect</Button>
+              </div>
             </div>
             <Card className="max-w-md mx-auto">
               <form onSubmit={handleRedeem}>

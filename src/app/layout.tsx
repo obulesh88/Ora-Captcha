@@ -1,8 +1,10 @@
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Sidebar, SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import SideNav from "@/components/common/SideNav";
+import FirebaseClientProvider from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
   title: "ORA Captcha",
@@ -25,15 +27,17 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body bg-background text-foreground antialiased">
-        <SidebarProvider>
-            <Sidebar>
-                <SideNav />
-            </Sidebar>
-            <SidebarInset>
-                {children}
-                <Toaster />
-            </SidebarInset>
-        </SidebarProvider>
+        <FirebaseClientProvider>
+          <SidebarProvider>
+              <Sidebar>
+                  <SideNav />
+              </Sidebar>
+              <SidebarInset>
+                  {children}
+                  <Toaster />
+              </SidebarInset>
+          </SidebarProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );
