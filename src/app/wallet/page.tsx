@@ -13,43 +13,42 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Wallet, IndianRupee } from 'lucide-react';
+import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
-import { useUser, useAuth, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+
+interface UserProfile {
+  id: string;
+  walletAddress: string;
+  balance: number;
+  email: string;
+}
 
 export default function WalletPage() {
   const { user, loading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [redeemAmount, setRedeemAmount] = useState('');
-  const [balance] = useState(1250); // Using local state for now
-  const { toast } = useToast();
+  
+  const userDocRef = useMemo(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userDocRef);
 
-  useEffect(() => {
-    if (user) {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      getDoc(userDocRef).then((docSnap) => {
-        if (docSnap.exists()) {
-          setWalletAddress(docSnap.data().walletAddress);
-        }
-      });
-    } else if (!loading) {
-      setWalletAddress(null);
-    }
-  }, [user, firestore, loading]);
+  const [redeemAmount, setRedeemAmount] = useState('');
+  const { toast } = useToast();
+  
+  const walletAddress = userProfile?.walletAddress;
+  const balance = userProfile?.balance ?? 0;
 
   const handleConnect = () => {
     router.push('/login');
   };
 
   const handleDisconnect = async () => {
+    if(!auth) return;
     await signOut(auth);
-    setWalletAddress(null);
     toast({
       title: 'Logged Out',
       description: 'You have been successfully logged out.',
@@ -57,8 +56,10 @@ export default function WalletPage() {
     router.push('/login');
   };
 
-  const handleRedeem = (e: React.FormEvent) => {
+  const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !userDocRef) return;
+
     const amount = parseInt(redeemAmount, 10);
     if (isNaN(amount) || amount <= 0) {
       toast({
@@ -76,14 +77,34 @@ export default function WalletPage() {
       });
       return;
     }
+    
+    try {
+      await updateDoc(userDocRef, {
+        balance: increment(-amount)
+      });
 
-    toast({
-      title: 'Redemption Successful!',
-      description: `You have redeemed ${amount} ORA coins.`,
-      className: 'bg-accent text-accent-foreground',
-    });
-    // In a real app, you'd update the balance state here.
-    setRedeemAmount('');
+      const transactionsColRef = collection(firestore, 'transactions');
+      await addDoc(transactionsColRef, {
+        userId: user.uid,
+        type: 'Withdrawal',
+        amount: -amount,
+        date: serverTimestamp(),
+      });
+
+      toast({
+        title: 'Redemption Successful!',
+        description: `You have redeemed ${amount} ORA coins.`,
+        className: 'bg-accent text-accent-foreground',
+      });
+      setRedeemAmount('');
+    } catch (error) {
+       console.error("Error redeeming coins:", error);
+       toast({
+         variant: "destructive",
+         title: "Error",
+         description: "Could not redeem your coins.",
+       });
+    }
   };
 
   const rupeesValue = useMemo(() => {
@@ -93,6 +114,17 @@ export default function WalletPage() {
     }
     return '0.00';
   }, [redeemAmount]);
+
+  if (loading || profileLoading) {
+     return (
+       <div className="flex flex-col min-h-screen">
+         <Header />
+         <main className="flex-1 flex items-center justify-center">
+           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+         </main>
+       </div>
+     );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

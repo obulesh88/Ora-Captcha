@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { SidebarTrigger } from "../ui/sidebar";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useDoc } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -11,14 +11,24 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { usePathname } from "next/navigation";
+import { doc } from 'firebase/firestore';
+import { useMemo } from 'react';
 
+interface UserProfile {
+  id: string;
+  balance: number;
+}
 
 export default function Header() {
-  const { user, loading } = useUser();
+  const { user } = useUser();
   const auth = useAuth();
   const pathname = usePathname();
+  const firestore = useFirestore();
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  const userDocRef = useMemo(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card shadow-sm">
@@ -39,7 +49,7 @@ export default function Header() {
               <>
                 <div className="flex items-center gap-2 rounded-full bg-accent text-accent-foreground px-4 py-1.5 text-sm font-semibold">
                     <span>Balance:</span>
-                    <span className="font-mono">1,250 ORA 🪙</span>
+                    <span className="font-mono">{(userProfile?.balance ?? 0).toLocaleString()} ORA 🪙</span>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

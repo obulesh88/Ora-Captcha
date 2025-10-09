@@ -55,6 +55,7 @@ export default function SignupPage() {
         displayName: loggedInUser.email, // Using email as displayName initially
         walletAddress: newWalletAddress,
         createdAt: new Date(),
+        balance: 0,
       });
       
       toast({

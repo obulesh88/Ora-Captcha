@@ -26,9 +26,38 @@
             "type": "string",
             "format": "date-time",
             "description": "The timestamp when the user was created."
+        },
+        "balance": {
+            "type": "number",
+            "description": "The user's ORA coin balance."
         }
       },
-      "required": ["uid", "email", "walletAddress", "createdAt"]
+      "required": ["uid", "email", "walletAddress", "createdAt", "balance"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "A record of a user's transaction.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who made the transaction."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of transaction (e.g., 'Captcha Solved', 'Ad Watched', 'Withdrawal')."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the transaction."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of the transaction."
+        }
+      },
+      "required": ["userId", "type", "amount", "date"]
     }
   },
   "auth": {
@@ -40,6 +69,12 @@
         "$ref": "#/entities/user"
       },
       "description": "Stores user profile information."
+    },
+    "/transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/transaction"
+      },
+      "description": "Stores all user transactions."
     }
   }
 }

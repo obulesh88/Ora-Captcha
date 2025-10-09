@@ -1,4 +1,6 @@
-import Header from "@/components/common/Header";
+'use client';
+
+import Header from '@/components/common/Header';
 import {
   Table,
   TableBody,
@@ -7,18 +9,55 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { useCollection } from '@/firebase';
+import { useUser } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 
-const transactions = [
-  { id: "1", type: "Captcha Solved", amount: 15, date: "2024-07-29" },
-  { id: "2", type: "Ad Watched", amount: 50, date: "2024-07-29" },
-  { id: "3", type: "Withdrawal", amount: -1000, date: "2024-07-28" },
-  { id: "4", type: "Captcha Solved", amount: 12, date: "2024-07-28" },
-  { id: "5", type: "Captcha Solved", amount: 18, date: "2024-07-27" },
-];
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  date: {
+    seconds: number;
+    nanoseconds: number;
+  };
+  userId: string;
+}
 
 export default function HistoryPage() {
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+
+  const transactionsQuery = useMemo(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'transactions'),
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+  }, [user, firestore]);
+
+  const {
+    data: transactions,
+    loading: transactionsLoading,
+  } = useCollection<Transaction>(transactionsQuery);
+
+  if (userLoading || transactionsLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -41,25 +80,35 @@ export default function HistoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>{transaction.type}</TableCell>
-                  <TableCell>
-                    {new Date(transaction.date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge
-                      variant={
-                        transaction.amount > 0 ? "default" : "destructive"
-                      }
-                      className="text-white"
-                    >
-                      {transaction.amount > 0 ? "+" : ""}
-                      {transaction.amount.toLocaleString()} ORA 🪙
-                    </Badge>
+              {transactions && transactions.length > 0 ? (
+                transactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
+                    <TableCell>{transaction.type}</TableCell>
+                    <TableCell>
+                      {new Date(
+                        transaction.date.seconds * 1000
+                      ).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant={
+                          transaction.amount > 0 ? 'default' : 'destructive'
+                        }
+                        className="text-white"
+                      >
+                        {transaction.amount > 0 ? '+' : ''}
+                        {transaction.amount.toLocaleString()} ORA 🪙
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center">
+                    No transactions yet.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
             <TableCaption>
               Your transaction history for the last 30 days.

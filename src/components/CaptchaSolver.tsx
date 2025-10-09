@@ -10,6 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { checkBotScore } from "@/app/actions";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { useUser, useFirestore } from "@/firebase";
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
 
 const generateCaptchaText = (length = 6) => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -24,12 +27,13 @@ export default function CaptchaSolver() {
   const [captchaText, setCaptchaText] = useState("");
   const [captchaImage, setCaptchaImage] = useState("");
   const [userInput, setUserInput] = useState("");
-  const [balance, setBalance] = useState(1250);
   const [userActions, setUserActions] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingBot, startBotCheck] = useTransition();
   const [isFlaggedAsBot, setIsFlaggedAsBot] = useState(false);
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const generateNewCaptcha = useCallback(() => {
     const newText = generateCaptchaText();
@@ -59,18 +63,34 @@ export default function CaptchaSolver() {
     }
   }, [userActions, toast]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isFlaggedAsBot) {
         toast({ variant: 'destructive', title: 'Account Flagged', description: 'Your account is under review due to unusual activity.' });
         return;
     }
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to solve captchas.' });
+        return;
+    }
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      if (userInput.toLowerCase() === captchaText.toLowerCase()) {
-        const earnedCoins = 2;
-        setBalance((prev) => prev + earnedCoins);
+    if (userInput.toLowerCase() === captchaText.toLowerCase()) {
+      const earnedCoins = 2;
+      const userDocRef = doc(firestore, 'users', user.uid);
+      try {
+        await updateDoc(userDocRef, {
+            balance: increment(earnedCoins)
+        });
+
+        const transactionsColRef = collection(firestore, 'transactions');
+        await addDoc(transactionsColRef, {
+            userId: user.uid,
+            type: 'Captcha Solved',
+            amount: earnedCoins,
+            date: serverTimestamp()
+        });
+
         setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
         toast({
           title: "Success!",
@@ -78,17 +98,24 @@ export default function CaptchaSolver() {
           className: "bg-accent text-accent-foreground",
         });
         generateNewCaptcha();
-      } else {
-        setUserActions((prev) => [...prev, "captcha_solved_incorrectly"]);
-        toast({
-          variant: "destructive",
-          title: "Incorrect",
-          description: "The captcha does not match. Please try again.",
-        });
-        setUserInput("");
+      } catch (error) {
+          console.error("Error updating balance:", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not update your balance.",
+          });
       }
-      setIsSubmitting(false);
-    }, 500);
+    } else {
+      setUserActions((prev) => [...prev, "captcha_solved_incorrectly"]);
+      toast({
+        variant: "destructive",
+        title: "Incorrect",
+        description: "The captcha does not match. Please try again.",
+      });
+      setUserInput("");
+    }
+    setIsSubmitting(false);
   };
 
   return (
