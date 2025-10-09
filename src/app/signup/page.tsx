@@ -38,6 +38,7 @@ export default function SignupPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth || !firestore) return;
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       const loggedInUser = result.user;
