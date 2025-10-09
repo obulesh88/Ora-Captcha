@@ -32,7 +32,6 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -53,20 +52,12 @@ export default function SignupPage() {
         uid: loggedInUser.uid,
         email: loggedInUser.email,
         displayName: name, 
-        walletAddress: walletAddress,
+        walletAddress: '',
         createdAt: new Date(),
         balance: 0,
       };
 
-      setDoc(userDocRef, userData)
-        .catch((error) => {
-          const permissionError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'create',
-            requestResourceData: userData
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        });
+      await setDoc(userDocRef, userData);
       
       toast({
         title: 'Account Created!',
@@ -75,13 +66,20 @@ export default function SignupPage() {
       });
       
       router.push('/wallet');
+
     } catch (error: any) {
       console.error('Error signing up:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: error.message || 'Could not sign up with email and password.',
-      });
+
+      // Check for Firestore permission errors specifically
+      if (error instanceof FirestorePermissionError) {
+         errorEmitter.emit('permission-error', error);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sign Up Failed',
+          description: error.message || 'Could not sign up with email and password.',
+        });
+      }
     }
   };
 
@@ -128,17 +126,6 @@ export default function SignupPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wallet-address">ORA Wallet Address</Label>
-                <Input
-                  id="wallet-address"
-                  type="text"
-                  placeholder="0x..."
-                  required
-                  value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
                 />
               </div>
             </CardContent>

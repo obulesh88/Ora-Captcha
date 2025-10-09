@@ -74,25 +74,27 @@ export default function WalletPage() {
     }
 
     setIsSavingWallet(true);
-    try {
-      await setDoc(userDocRef, { walletAddress: newWalletAddress.trim() }, { merge: true });
-      toast({
-        title: 'Wallet Address Saved!',
-        description: 'Your ORA wallet has been linked.',
-        className: 'bg-accent text-accent-foreground',
-      });
-      setNewWalletAddress('');
-      setShowConnectForm(false);
-    } catch (error) {
+    const data = { walletAddress: newWalletAddress.trim() };
+    setDoc(userDocRef, data, { merge: true })
+      .then(() => {
+        toast({
+          title: 'Wallet Address Saved!',
+          description: 'Your ORA wallet has been linked.',
+          className: 'bg-accent text-accent-foreground',
+        });
+        setNewWalletAddress('');
+        setShowConnectForm(false);
+      })
+      .catch((error) => {
        const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
-          requestResourceData: { walletAddress: newWalletAddress.trim() }
+          requestResourceData: data
         });
         errorEmitter.emit('permission-error', permissionError);
-    } finally {
+    }).finally(() => {
       setIsSavingWallet(false);
-    }
+    });
   };
 
 
