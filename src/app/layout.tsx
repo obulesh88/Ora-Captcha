@@ -27,17 +27,19 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body bg-background text-foreground antialiased">
-        <FirebaseClientProvider>
-          <SidebarProvider>
-              <Sidebar>
-                  <SideNav />
-              </Sidebar>
-              <SidebarInset>
-                  {children}
-                  <Toaster />
-              </SidebarInset>
-          </SidebarProvider>
-        </FirebaseClientProvider>
+        <div className="overflow-x-hidden">
+            <FirebaseClientProvider>
+            <SidebarProvider>
+                <Sidebar>
+                    <SideNav />
+                </Sidebar>
+                <SidebarInset>
+                    {children}
+                    <Toaster />
+                </SidebarInset>
+            </SidebarProvider>
+            </FirebaseClientProvider>
+        </div>
       </body>
     </html>
   );
