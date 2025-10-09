@@ -18,14 +18,14 @@ import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 interface UserProfile {
   id: string;
-  walletAddress: string;
+  walletAddress?: string;
   balance: number;
   email: string;
 }
@@ -40,14 +40,19 @@ export default function WalletPage() {
   const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userDocRef);
 
   const [redeemAmount, setRedeemAmount] = useState('');
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [isSavingWallet, setIsSavingWallet] = useState(false);
   const { toast } = useToast();
   
   const walletAddress = userProfile?.walletAddress;
   const balance = userProfile?.balance ?? 0;
 
-  const handleConnect = () => {
-    router.push('/login');
-  };
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
 
   const handleDisconnect = async () => {
     if(!auth) return;
@@ -58,6 +63,36 @@ export default function WalletPage() {
     });
     router.push('/login');
   };
+
+  const handleSaveWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !userDocRef) return;
+    if (!newWalletAddress.trim()) {
+      toast({ variant: 'destructive', title: 'Invalid Address', description: 'Please enter a valid wallet address.' });
+      return;
+    }
+
+    setIsSavingWallet(true);
+    try {
+      await setDoc(userDocRef, { walletAddress: newWalletAddress.trim() }, { merge: true });
+      toast({
+        title: 'Wallet Address Saved!',
+        description: 'Your ORA wallet has been linked.',
+        className: 'bg-accent text-accent-foreground',
+      });
+      setNewWalletAddress('');
+    } catch (error) {
+       const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { walletAddress: newWalletAddress.trim() }
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setIsSavingWallet(false);
+    }
+  };
+
 
   const handleRedeem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,43 +173,61 @@ export default function WalletPage() {
      );
   }
 
+  if (!user) {
+    return null; // or a redirect, which is handled by useEffect
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8">
-        {!user || !walletAddress ? (
+        {!walletAddress ? (
           <>
             <div className="space-y-4 mb-8">
               <h1 className="text-3xl font-bold tracking-tight">
-                Redeem Your ORA Coins
+                Connect Your ORA Wallet
               </h1>
               <p className="text-muted-foreground">
-                Connect your ORA Wallet to redeem your earned coins.
+                Enter your wallet address to start redeeming coins.
               </p>
             </div>
             <Card className="max-w-md mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-6 h-6 text-primary" />
-                  Connect to ORA Wallet
-                </CardTitle>
-                <CardDescription>
-                  To redeem your ORA Coins, you need to connect your ORA
-                  Wallet. This will allow for secure and seamless transfer of
-                  your earnings.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleConnect}
-                  disabled={loading}
-                >
-                  <Wallet className="mr-2 h-5 w-5" />
-                  {loading ? 'Loading...' : 'Connect Wallet'}
-                </Button>
-              </CardContent>
+              <form onSubmit={handleSaveWallet}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-6 h-6 text-primary" />
+                    Enter Your Wallet Address
+                  </CardTitle>
+                   <CardDescription>
+                    Please provide your ORA wallet address to link it to your account.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="wallet-address">ORA Wallet Address</Label>
+                    <Input
+                      id="wallet-address"
+                      type="text"
+                      placeholder="0x..."
+                      value={newWalletAddress}
+                      onChange={(e) => setNewWalletAddress(e.target.value)}
+                      required
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    type="submit"
+                    disabled={isSavingWallet}
+                  >
+                    <Wallet className="mr-2 h-5 w-5" />
+                    {isSavingWallet ? 'Saving...' : 'Save Wallet Address'}
+                  </Button>
+                   <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs">Disconnect</Button>
+                </CardFooter>
+              </form>
             </Card>
           </>
         ) : (
