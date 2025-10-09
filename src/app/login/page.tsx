@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/');
+      router.push('/wallet');
     }
   }, [user, router]);
 
