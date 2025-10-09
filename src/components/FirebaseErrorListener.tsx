@@ -3,23 +3,27 @@
 
 import { useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
+import { useAuth } from '@/firebase';
+import type { FirestorePermissionError } from '@/firebase/errors';
 
 export default function FirebaseErrorListener() {
+  const auth = useAuth();
+
   useEffect(() => {
-    const handlePermissionError = (error: any) => {
-      // In a real app, you might want to log this to a service like Sentry
-      // For now, we'll just throw it to make it visible in the Next.js overlay
-      console.error(
-        'Firestore Permission Error:',
-        error.message,
-        'Context:',
-        error.context
-      );
-      // Throwing the error will make it visible in the Next.js error overlay
-      // during development, which is very helpful for debugging security rules.
+    const handlePermissionError = (error: FirestorePermissionError) => {
+      // In development, we log a detailed warning to the console.
+      // In production, you might want to send this to a logging service.
       if (process.env.NODE_ENV === 'development') {
-        throw error;
+        console.warn('Firestore Permission Denied:', {
+          message: error.message,
+          user: auth.currentUser?.uid || 'not authenticated',
+          context: error.context,
+          timestamp: new Date().toISOString(),
+        });
       }
+      
+      // We don't re-throw the error, which prevents the app from "crashing"
+      // and showing the Next.js error overlay.
     };
 
     errorEmitter.on('permission-error', handlePermissionError);
@@ -27,7 +31,7 @@ export default function FirebaseErrorListener() {
     return () => {
       errorEmitter.off('permission-error', handlePermissionError);
     };
-  }, []);
+  }, [auth]);
 
   return null;
 }
