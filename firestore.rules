@@ -1,78 +1,72 @@
 /**
- * @fileoverview Firestore Security Rules for the ORA application.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles
- * and allows only authenticated users to create transactions, with each transaction
- * associated with a user. The rules prioritize security by restricting data
- * access to the owner of the data, preventing unauthorized modifications or deletions.
- *
- * Data Structure:
- * - /users/{userId}: Stores individual user profiles, accessible only to the
- *   authenticated user with a matching userId.
- * - /transactions/{transactionId}: Stores transaction records, accessible to
- *   any authenticated user, but write operations are only allowed if the transaction's
- *   userId matches the authenticated user's ID.
- *
- * Key Security Decisions:
- * - User listing is disallowed to prevent enumeration.
- * - Transactions are secured to ensure that a user can only create transactions
- *   associated with their account.
- * - Data shape validation is relaxed in prototyping mode to allow for rapid schema iteration.
- *
- * Denormalization for Authorization:
- *  The 'transaction' entity requires the 'userId' field to match the authenticated user's
- *  UID to enforce that a user can only create transactions associated with their account.
+ * @file Firestore Security Rules
+ * @core-philosophy This ruleset enforces a strict user-ownership model for user profiles and allows only authenticated users to create transaction records associated with their user ID.
+ * @data-structure
+ *   - /users/{userId}: Stores user profile information, accessible only to the user themselves.
+ *   - /transactions/{transactionId}: Stores all transactions, readable by anyone, but creatable only with correct userId
+ * @key-security-decisions
+ *   - Users can only access their own profile data. Listing all users is disallowed.
+ *   - Transactions can be created by the user, but not updated or deleted.
+ * @denormalization-for-authorization
+ *   - The `transactions` collection requires the `userId` field to match the authenticated user's UID for write operations. This avoids the need for complex queries or joins.
+ * @structural-segregation
+ *   - No explicit segregation between public and private data is needed at this time.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secures user profiles, allowing only the owner to read and write their data.
+     * @description Grants access to user profile information only to the user themselves.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) if the authenticated user's UID matches the userId.
-     * @deny (get, create, update, delete) if the authenticated user's UID does not match the userId.
-     * @principle Enforces document ownership for writes.
+     * @allow (get) Authenticated user can read their own profile (e.g., auth.uid = "user123", userId = "user123").
+     * @allow (create) Authenticated user can create their own profile (e.g., auth.uid = "user123", userId = "user123").
+     * @allow (update) Authenticated user can update their own profile (e.g., auth.uid = "user123", userId = "user123").
+     * @allow (delete) Authenticated user can delete their own profile (e.g., auth.uid = "user123", userId = "user123").
+     * @deny (get) Authenticated user cannot read another user's profile (e.g., auth.uid = "user456", userId = "user123").
+     * @deny (list) No one can list all users.
+     * @deny (create) Unauthenticated user cannot create a profile.
+     * @deny (update) Unauthenticated user cannot update a profile.
+     * @deny (delete) Unauthenticated user cannot delete a profile.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
       allow get: if isOwner(userId);
       allow list: if false;
-
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource.data.uid == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Secures transactions, allowing only authenticated users to create transactions associated with their account.
+     * @description Grants access to create transaction records for the authenticated user.
      * @path /transactions/{transactionId}
-     * @allow (create) if the transaction's userId matches the authenticated user's UID.
-     * @deny (create) if the transaction's userId does not match the authenticated user's UID.
-     * @allow (get, list) if true
-     * @principle Enforces that users can only create transactions for themselves.
+     * @allow (create) Authenticated user can create transaction record associated with their user ID (e.g., auth.uid = "user123", request.resource.data.userId = "user123").
+     * @allow (get) Anyone can read transaction record.
+     * @allow (list) Anyone can list transaction records.
+     * @deny (create) Authenticated user cannot create transaction record for another user (e.g., auth.uid = "user123", request.resource.data.userId = "user456").
+     * @deny (update) No one can update transaction record.
+     * @deny (delete) No one can delete transaction record.
+     * @principle Enforces that only the authenticated user can create transaction records associated with their user ID.
      */
     match /transactions/{transactionId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if false;
       allow delete: if false;
     }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
   }
 }
