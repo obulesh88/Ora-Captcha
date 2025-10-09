@@ -1,72 +1,74 @@
 /**
- * @file Firestore Security Rules
- * @core-philosophy This ruleset enforces a strict user-ownership model for user profiles and allows only authenticated users to create transaction records associated with their user ID.
- * @data-structure
- *   - /users/{userId}: Stores user profile information, accessible only to the user themselves.
- *   - /transactions/{transactionId}: Stores all transactions, readable by anyone, but creatable only with correct userId
- * @key-security-decisions
- *   - Users can only access their own profile data. Listing all users is disallowed.
- *   - Transactions can be created by the user, but not updated or deleted.
- * @denormalization-for-authorization
- *   - The `transactions` collection requires the `userId` field to match the authenticated user's UID for write operations. This avoids the need for complex queries or joins.
- * @structural-segregation
- *   - No explicit segregation between public and private data is needed at this time.
+ * @fileoverview Firestore Security Rules for ORA Wallet App.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles
+ * and allows only authenticated users to read and write their own data.
+ * All transactions are publicly readable but only created by backend.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores individual user profiles.
+ * - /transactions/{transactionId}: Stores transaction records.
+ *
+ * Key Security Decisions:
+ * - Users can only read and write their own profile data.
+ * - Listing users is disallowed.
+ * - Transactions are publicly readable, but create, update, and delete are only allowed from backend.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants access to user profile information only to the user themselves.
+     * @description Enforces user-ownership for user profiles.
      * @path /users/{userId}
-     * @allow (get) Authenticated user can read their own profile (e.g., auth.uid = "user123", userId = "user123").
-     * @allow (create) Authenticated user can create their own profile (e.g., auth.uid = "user123", userId = "user123").
-     * @allow (update) Authenticated user can update their own profile (e.g., auth.uid = "user123", userId = "user123").
-     * @allow (delete) Authenticated user can delete their own profile (e.g., auth.uid = "user123", userId = "user123").
-     * @deny (get) Authenticated user cannot read another user's profile (e.g., auth.uid = "user456", userId = "user123").
-     * @deny (list) No one can list all users.
-     * @deny (create) Unauthenticated user cannot create a profile.
-     * @deny (update) Unauthenticated user cannot update a profile.
-     * @deny (delete) Unauthenticated user cannot delete a profile.
-     * @principle Enforces document ownership for all operations on user profiles.
+     * @allow (create) User with UID 'user_abc' can create their profile if request.auth.uid == 'user_abc'.
+     * @allow (get) User with UID 'user_abc' can read their profile if request.auth.uid == 'user_abc'.
+     * @allow (update) User with UID 'user_abc' can update their profile if request.auth.uid == 'user_abc'.
+     * @allow (delete) User with UID 'user_abc' can delete their profile if request.auth.uid == 'user_abc'.
+     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc'.
+     * @deny (get) User with UID 'user_xyz' cannot read the profile of 'user_abc'.
+     * @deny (update) User with UID 'user_xyz' cannot update the profile of 'user_abc'.
+     * @deny (delete) User with UID 'user_xyz' cannot delete the profile of 'user_abc'.
+     * @principle Enforces document ownership for all read and write operations.
      */
     match /users/{userId} {
+      // Helper function to check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the authenticated user is the owner of the resource
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the authenticated user is the existing owner of the resource
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource.data.uid == userId;
+      allow list: if false; // Listing users is not allowed
+
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Grants access to create transaction records for the authenticated user.
+     * @description Allows public read access to transactions, but restricts creation, updates, and deletes.
      * @path /transactions/{transactionId}
-     * @allow (create) Authenticated user can create transaction record associated with their user ID (e.g., auth.uid = "user123", request.resource.data.userId = "user123").
-     * @allow (get) Anyone can read transaction record.
-     * @allow (list) Anyone can list transaction records.
-     * @deny (create) Authenticated user cannot create transaction record for another user (e.g., auth.uid = "user123", request.resource.data.userId = "user456").
-     * @deny (update) No one can update transaction record.
-     * @deny (delete) No one can delete transaction record.
-     * @principle Enforces that only the authenticated user can create transaction records associated with their user ID.
+     * @allow (get) Any user can read a transaction.
+     * @allow (list) Any user can list transactions.
+     * @deny (create) No user can create a transaction through the client.
+     * @deny (update) No user can update a transaction through the client.
+     * @deny (delete) No user can delete a transaction through the client.
+     * @principle Allows public reads but restricts writes for auditability.
      */
     match /transactions/{transactionId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true; // Public read access
+      allow create, update, delete: if false; // Only backend can create, update, and delete transactions
     }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
   }
 }
