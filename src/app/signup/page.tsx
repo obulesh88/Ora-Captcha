@@ -20,6 +20,8 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SignupPage() {
   const auth = useAuth();
@@ -29,6 +31,7 @@ export default function SignupPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -44,23 +47,29 @@ export default function SignupPage() {
       const loggedInUser = result.user;
 
       const userDocRef = doc(firestore, 'users', loggedInUser.uid);
-      
-      const newWalletAddress = `0x${[...Array(40)]
-        .map(() => Math.floor(Math.random() * 16).toString(16))
-        .join('')}`;
         
-      await setDoc(userDocRef, {
+      const userData = {
         uid: loggedInUser.uid,
         email: loggedInUser.email,
-        displayName: loggedInUser.email, // Using email as displayName initially
-        walletAddress: newWalletAddress,
+        displayName: loggedInUser.email, 
+        walletAddress: walletAddress,
         createdAt: new Date(),
         balance: 0,
-      });
+      };
+
+      setDoc(userDocRef, userData)
+        .catch((error) => {
+          const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'create',
+            requestResourceData: userData
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
       
       toast({
         title: 'Account Created!',
-        description: 'Your ORA Wallet has been created.',
+        description: 'Your ORA Wallet has been linked.',
         className: 'bg-accent text-accent-foreground',
       });
       
@@ -84,7 +93,7 @@ export default function SignupPage() {
             <CardHeader>
               <CardTitle className="text-2xl">Sign Up</CardTitle>
               <CardDescription>
-                Create an account with your email and password to get started.
+                Create an account to get started.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -107,6 +116,17 @@ export default function SignupPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="walletAddress">ORA Wallet Address</Label>
+                <Input
+                  id="walletAddress"
+                  type="text"
+                  placeholder="0x..."
+                  required
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
                 />
               </div>
             </CardContent>
