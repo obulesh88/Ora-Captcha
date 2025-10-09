@@ -130,6 +130,17 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="wallet-address">ORA Wallet Address</Label>
+                <Input
+                  id="wallet-address"
+                  type="text"
+                  placeholder="0x..."
+                  required
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                />
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button className="w-full" type="submit" disabled={loading}>
@@ -140,6 +151,9 @@ export default function SignupPage() {
                 <Link href="/login" className="underline">
                   Login
                 </Link>
+              </div>
+              <div className="text-center text-xs text-muted-foreground mt-2">
+                Powered by OR
               </div>
             </CardFooter>
           </form>

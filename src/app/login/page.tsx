@@ -102,6 +102,9 @@ export default function LoginPage() {
                   Sign up
                 </Link>
               </div>
+               <div className="text-center text-xs text-muted-foreground mt-2">
+                Powered by OR
+              </div>
             </CardFooter>
           </form>
         </Card>
