@@ -15,14 +15,16 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { useUser, useAuth, useFirestore } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 export default function WalletPage() {
   const { user, loading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
+  const router = useRouter();
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [redeemAmount, setRedeemAmount] = useState('');
   const [balance] = useState(1250); // Using local state for now
@@ -36,59 +38,23 @@ export default function WalletPage() {
           setWalletAddress(docSnap.data().walletAddress);
         }
       });
-    } else {
+    } else if (!loading) {
       setWalletAddress(null);
     }
-  }, [user, firestore]);
+  }, [user, firestore, loading]);
 
-  const handleConnect = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const loggedInUser = result.user;
-      
-      const userDocRef = doc(firestore, 'users', loggedInUser.uid);
-      const docSnap = await getDoc(userDocRef);
-
-      let newWalletAddress = '';
-      if (docSnap.exists()) {
-        newWalletAddress = docSnap.data().walletAddress;
-      } else {
-        // Generate a new unique wallet address
-        newWalletAddress = `0x${[...Array(40)]
-          .map(() => Math.floor(Math.random() * 16).toString(16))
-          .join('')}`;
-        await setDoc(userDocRef, {
-          email: loggedInUser.email,
-          displayName: loggedInUser.displayName,
-          walletAddress: newWalletAddress,
-          createdAt: new Date(),
-        });
-      }
-      setWalletAddress(newWalletAddress);
-
-      toast({
-        title: 'Wallet Connected',
-        description: `Your ORA Wallet has been successfully connected. Your address is ${newWalletAddress}`,
-        className: 'bg-accent text-accent-foreground truncate',
-      });
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Connection Failed',
-        description: 'Could not connect to your wallet.',
-      });
-    }
+  const handleConnect = () => {
+    router.push('/login');
   };
 
   const handleDisconnect = async () => {
     await signOut(auth);
     setWalletAddress(null);
     toast({
-      title: 'Wallet Disconnected',
-      description: 'You have been disconnected from your ORA Wallet.',
+      title: 'Logged Out',
+      description: 'You have been successfully logged out.',
     });
+    router.push('/login');
   };
 
   const handleRedeem = (e: React.FormEvent) => {
@@ -162,7 +128,7 @@ export default function WalletPage() {
                   disabled={loading}
                 >
                   <Wallet className="mr-2 h-5 w-5" />
-                  {loading ? 'Loading...' : 'Connect with Google'}
+                  {loading ? 'Loading...' : 'Connect Wallet'}
                 </Button>
               </CardContent>
             </Card>
