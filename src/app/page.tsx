@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PlayCircle, Loader2 } from "lucide-react";
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function Home() {
   const { user, loading } = useUser();
@@ -24,33 +26,45 @@ export default function Home() {
     }
   }, [user, loading, router]);
 
-  const handleWatchAd = async () => {
+  const handleWatchAd = () => {
     if (!user) return;
     const userDocRef = doc(firestore, 'users', user.uid);
-    try {
-      await updateDoc(userDocRef, {
-        balance: increment(3)
+    const adReward = 3;
+
+    updateDoc(userDocRef, {
+      balance: increment(adReward)
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { balance: `increment(${adReward})` }
       });
-       const transactionsColRef = collection(firestore, 'transactions');
-       await addDoc(transactionsColRef, {
-         userId: user.uid,
-         type: 'Ad Watched',
-         amount: 3,
-         date: serverTimestamp(),
-       });
-      toast({
-        title: "Success!",
-        description: `You've earned 3 ORA coins.`,
-        className: 'bg-accent text-accent-foreground',
+      errorEmitter.emit('permission-error', permissionError);
+    });
+
+    const transactionsColRef = collection(firestore, 'transactions');
+    const transactionData = {
+      userId: user.uid,
+      type: 'Ad Watched',
+      amount: adReward,
+      date: serverTimestamp(),
+    };
+    addDoc(transactionsColRef, transactionData)
+      .then(() => {
+        toast({
+          title: "Success!",
+          description: `You've earned ${adReward} ORA coins.`,
+          className: 'bg-accent text-accent-foreground',
+        });
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: transactionsColRef.path,
+          operation: 'create',
+          requestResourceData: transactionData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-    } catch (error) {
-      console.error("Error updating balance:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not update your balance.",
-      });
-    }
   };
 
 

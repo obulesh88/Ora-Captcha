@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useTransition } from "react";
@@ -12,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { useUser, useFirestore } from "@/firebase";
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 
 const generateCaptchaText = (length = 6) => {
@@ -63,7 +66,7 @@ export default function CaptchaSolver() {
     }
   }, [userActions, toast]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isFlaggedAsBot) {
         toast({ variant: 'destructive', title: 'Account Flagged', description: 'Your account is under review due to unusual activity.' });
@@ -78,34 +81,44 @@ export default function CaptchaSolver() {
     if (userInput.toLowerCase() === captchaText.toLowerCase()) {
       const earnedCoins = 2;
       const userDocRef = doc(firestore, 'users', user.uid);
-      try {
-        await updateDoc(userDocRef, {
-            balance: increment(earnedCoins)
+      
+      updateDoc(userDocRef, {
+          balance: increment(earnedCoins)
+      }).catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { balance: `increment(${earnedCoins})` }
         });
+        errorEmitter.emit('permission-error', permissionError);
+      });
 
-        const transactionsColRef = collection(firestore, 'transactions');
-        await addDoc(transactionsColRef, {
-            userId: user.uid,
-            type: 'Captcha Solved',
-            amount: earnedCoins,
-            date: serverTimestamp()
-        });
-
-        setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
-        toast({
-          title: "Success!",
-          description: `You've earned ${earnedCoins} ORA coins.`,
-          className: "bg-accent text-accent-foreground",
-        });
-        generateNewCaptcha();
-      } catch (error) {
-          console.error("Error updating balance:", error);
+      const transactionsColRef = collection(firestore, 'transactions');
+      const transactionData = {
+          userId: user.uid,
+          type: 'Captcha Solved',
+          amount: earnedCoins,
+          date: serverTimestamp()
+      };
+      addDoc(transactionsColRef, transactionData)
+        .then(() => {
+          setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
           toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not update your balance.",
+            title: "Success!",
+            description: `You've earned ${earnedCoins} ORA coins.`,
+            className: "bg-accent text-accent-foreground",
           });
-      }
+          generateNewCaptcha();
+        })
+        .catch((error) => {
+          const permissionError = new FirestorePermissionError({
+            path: transactionsColRef.path,
+            operation: 'create',
+            requestResourceData: transactionData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
+
     } else {
       setUserActions((prev) => [...prev, "captcha_solved_incorrectly"]);
       toast({

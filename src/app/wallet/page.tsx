@@ -1,3 +1,4 @@
+
 'use client';
 
 import Header from '@/components/common/Header';
@@ -19,6 +20,8 @@ import { signOut } from 'firebase/auth';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface UserProfile {
   id: string;
@@ -56,7 +59,7 @@ export default function WalletPage() {
     router.push('/login');
   };
 
-  const handleRedeem = async (e: React.FormEvent) => {
+  const handleRedeem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !userDocRef) return;
 
@@ -78,33 +81,42 @@ export default function WalletPage() {
       return;
     }
     
-    try {
-      await updateDoc(userDocRef, {
-        balance: increment(-amount)
-      });
+    updateDoc(userDocRef, {
+      balance: increment(-amount)
+    }).catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { balance: `increment(${-amount})` }
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
 
-      const transactionsColRef = collection(firestore, 'transactions');
-      await addDoc(transactionsColRef, {
-        userId: user.uid,
-        type: 'Withdrawal',
-        amount: -amount,
-        date: serverTimestamp(),
-      });
+    const transactionsColRef = collection(firestore, 'transactions');
+    const transactionData = {
+      userId: user.uid,
+      type: 'Withdrawal',
+      amount: -amount,
+      date: serverTimestamp(),
+    };
 
-      toast({
-        title: 'Redemption Successful!',
-        description: `You have redeemed ${amount} ORA coins.`,
-        className: 'bg-accent text-accent-foreground',
+    addDoc(transactionsColRef, transactionData)
+      .then(() => {
+        toast({
+          title: 'Redemption Successful!',
+          description: `You have redeemed ${amount} ORA coins.`,
+          className: 'bg-accent text-accent-foreground',
+        });
+        setRedeemAmount('');
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: transactionsColRef.path,
+          operation: 'create',
+          requestResourceData: transactionData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      setRedeemAmount('');
-    } catch (error) {
-       console.error("Error redeeming coins:", error);
-       toast({
-         variant: "destructive",
-         title: "Error",
-         description: "Could not redeem your coins.",
-       });
-    }
   };
 
   const rupeesValue = useMemo(() => {
