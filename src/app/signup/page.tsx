@@ -29,8 +29,10 @@ export default function SignupPage() {
   const { user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -50,8 +52,8 @@ export default function SignupPage() {
       const userData = {
         uid: loggedInUser.uid,
         email: loggedInUser.email,
-        displayName: loggedInUser.email, 
-        walletAddress: "",
+        displayName: name, 
+        walletAddress: walletAddress,
         createdAt: new Date(),
         balance: 0,
       };
@@ -96,6 +98,17 @@ export default function SignupPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+               <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
                <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
