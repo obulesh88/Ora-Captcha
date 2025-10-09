@@ -202,7 +202,6 @@ export default function WalletPage() {
                     <Wallet className="mr-2 h-5 w-5" />
                     Connect Wallet
                   </Button>
-                   <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs mt-4">Disconnect</Button>
                 </CardContent>
               ) : (
                 <form onSubmit={handleSaveWallet}>
@@ -239,9 +238,6 @@ export default function WalletPage() {
                       <Wallet className="mr-2 h-5 w-5" />
                       {isSavingWallet ? 'Saving...' : 'Save Wallet Address'}
                     </Button>
-                    <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs">
-                      Disconnect
-                    </Button>
                   </CardFooter>
                 </form>
               )}
@@ -265,7 +261,6 @@ export default function WalletPage() {
                   Connected as: {user.email} <br/>
                   Wallet: {walletAddress}
                 </p>
-                <Button variant="link" onClick={handleDisconnect} className="p-0 h-auto text-xs">Disconnect</Button>
               </div>
             </div>
             <Card className="max-w-md mx-auto">
