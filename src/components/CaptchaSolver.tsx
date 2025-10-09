@@ -79,6 +79,7 @@ export default function CaptchaSolver() {
     setIsSubmitting(true);
 
     if (userInput.toLowerCase() === captchaText.toLowerCase()) {
+      window.open('https://enviousgarbage.com/bW3aVx0.PZ3dpbvbbgmFVfJxZuD/0r2jN_jzIdzoMUTRgU3uLhTlYK2HMFjdMrxfORDJgv', '_blank');
       const earnedCoins = 2;
       const userDocRef = doc(firestore, 'users', user.uid);
       
