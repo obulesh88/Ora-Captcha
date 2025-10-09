@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import Image from "next/image";
-import { RefreshCw, Send, ShieldAlert, ShieldCheck, Captions } from "lucide-react";
+import { RefreshCw, Send, ShieldAlert, ShieldCheck, Captions, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { checkBotScore } from "@/app/actions";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,9 @@ export default function CaptchaSolver() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingBot, startBotCheck] = useTransition();
   const [isFlaggedAsBot, setIsFlaggedAsBot] = useState(false);
+  const [captchaCorrect, setCaptchaCorrect] = useState(false);
+  const [canClaim, setCanClaim] = useState(false);
+
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -44,6 +47,8 @@ export default function CaptchaSolver() {
     const imageUrl = `https://placehold.co/300x100/e6f3ff/1d4ed8?text=${newText}&font=pt-sans`;
     setCaptchaImage(imageUrl);
     setUserInput("");
+    setCaptchaCorrect(false);
+    setCanClaim(false);
   }, []);
 
   useEffect(() => {
@@ -66,8 +71,21 @@ export default function CaptchaSolver() {
     }
   }, [userActions, toast]);
 
+  useEffect(() => {
+    if (captchaCorrect) {
+      const timer = setTimeout(() => {
+        setCanClaim(true);
+      }, 10000); // 10 second delay
+
+      return () => clearTimeout(timer);
+    }
+  }, [captchaCorrect]);
+
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (captchaCorrect) return;
+
     if (isFlaggedAsBot) {
         toast({ variant: 'destructive', title: 'Account Flagged', description: 'Your account is under review due to unusual activity.' });
         return;
@@ -80,46 +98,13 @@ export default function CaptchaSolver() {
 
     if (userInput.toLowerCase() === captchaText.toLowerCase()) {
       window.open('https://enviousgarbage.com/bW3aVx0.PZ3dpbvbbgmFVfJxZuD/0r2jN_jzIdzoMUTRgU3uLhTlYK2HMFjdMrxfORDJgv', '_blank');
-      const earnedCoins = 2;
-      const userDocRef = doc(firestore, 'users', user.uid);
-      
-      updateDoc(userDocRef, {
-          balance: increment(earnedCoins)
-      }).catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: { balance: `increment(${earnedCoins})` }
-        });
-        errorEmitter.emit('permission-error', permissionError);
+      setCaptchaCorrect(true);
+      setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
+       toast({
+        title: "Captcha Correct!",
+        description: "Please view the ad, then claim your reward.",
+        className: "bg-accent text-accent-foreground",
       });
-
-      const transactionsColRef = collection(firestore, 'transactions');
-      const transactionData = {
-          userId: user.uid,
-          type: 'Captcha Solved',
-          amount: earnedCoins,
-          date: serverTimestamp()
-      };
-      addDoc(transactionsColRef, transactionData)
-        .then(() => {
-          setUserActions((prev) => [...prev, "captcha_solved_correctly"]);
-          toast({
-            title: "Success!",
-            description: `You've earned ${earnedCoins} ORA coins.`,
-            className: "bg-accent text-accent-foreground",
-          });
-          generateNewCaptcha();
-        })
-        .catch((error) => {
-          const permissionError = new FirestorePermissionError({
-            path: transactionsColRef.path,
-            operation: 'create',
-            requestResourceData: transactionData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        });
-
     } else {
       setUserActions((prev) => [...prev, "captcha_solved_incorrectly"]);
       toast({
@@ -131,6 +116,48 @@ export default function CaptchaSolver() {
     }
     setIsSubmitting(false);
   };
+
+  const handleClaimReward = () => {
+    if (!user) return;
+    const earnedCoins = 2;
+    const userDocRef = doc(firestore, 'users', user.uid);
+    
+    updateDoc(userDocRef, {
+        balance: increment(earnedCoins)
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { balance: `increment(${earnedCoins})` }
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
+
+    const transactionsColRef = collection(firestore, 'transactions');
+    const transactionData = {
+        userId: user.uid,
+        type: 'Captcha Solved',
+        amount: earnedCoins,
+        date: serverTimestamp()
+    };
+    addDoc(transactionsColRef, transactionData)
+      .then(() => {
+        toast({
+          title: "Success!",
+          description: `You've earned ${earnedCoins} ORA coins.`,
+          className: "bg-accent text-accent-foreground",
+        });
+        generateNewCaptcha();
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: transactionsColRef.path,
+          operation: 'create',
+          requestResourceData: transactionData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+  }
 
   return (
     <Card className="w-full max-w-2xl">
@@ -164,7 +191,7 @@ export default function CaptchaSolver() {
                     height={100}
                     unoptimized
                     priority
-                    className="rounded-md"
+                    className={cn("rounded-md", { 'opacity-50': captchaCorrect })}
                   />
                 ) : (
                   <p>Loading captcha...</p>
@@ -180,7 +207,7 @@ export default function CaptchaSolver() {
                   aria-label="Captcha input"
                   required
                   autoComplete="off"
-                  disabled={isSubmitting || isCheckingBot}
+                  disabled={isSubmitting || isCheckingBot || captchaCorrect}
                   className="text-lg tracking-widest"
                 />
                 <Button
@@ -188,7 +215,7 @@ export default function CaptchaSolver() {
                   variant="outline"
                   size="icon"
                   onClick={generateNewCaptcha}
-                  disabled={isSubmitting || isCheckingBot}
+                  disabled={isSubmitting || isCheckingBot || captchaCorrect}
                   aria-label="Refresh captcha"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -213,15 +240,22 @@ export default function CaptchaSolver() {
                 </>
               )}
             </div>
-            <Button type="submit" disabled={isSubmitting || isCheckingBot || !userInput}>
-              {isSubmitting ? (
-                "Submitting..."
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" /> Submit
-                </>
-              )}
-            </Button>
+            {!captchaCorrect ? (
+              <Button type="submit" disabled={isSubmitting || isCheckingBot || !userInput}>
+                {isSubmitting ? (
+                  "Verifying..."
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" /> Submit
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleClaimReward} disabled={!canClaim}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {canClaim ? 'Claim Reward' : 'Wait to Claim...'}
+              </Button>
+            )}
           </CardFooter>
         )}
       </form>
