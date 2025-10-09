@@ -1,9 +1,70 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    /**
+     * @description This ruleset enforces a strict user-ownership model for user profiles and transactions.
+     * @dataStructure
+     *   - /users/{userId}: Stores user profile data, accessible only to the user themselves.
+     *   - /transactions/{transactionId}: Stores transaction data, also accessible only to the associated user.  A `userId` field on each transaction document is used to enforce ownership.
+     * @keySecurityDecisions
+     *   - Users can only read and write their own profile data.
+     *   - Transactions can be read and written by the associated user.
+     *   - Listing all users or transactions is not allowed.
+     */
+
+    // Helper function to check if the request is authenticated.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the authenticated user is the owner of the resource.
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Helper function to check if the authenticated user is the existing owner of the resource.
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (get) User VUmakMpQ51b6njaBzK1adiIErJC2 can get their own profile.
+     * @allow (create) User VUmakMpQ51b6njaBzK1adiIErJC2 can create their profile if their auth UID matches the document ID.
+     * @allow (update) User VUmakMpQ51b6njaBzK1adiIErJC2 can update their own profile.
+     * @allow (delete) User VUmakMpQ51b6njaBzK1adiIErJC2 can delete their own profile.
+     * @deny (get) User Wxyz cannot get user VUmakMpQ51b6njaBzK1adiIErJC2's profile.
+     * @deny (create) User Wxyz cannot create user VUmakMpQ51b6njaBzK1adiIErJC2's profile.
+     * @principle Enforces document ownership for user profiles.
+     */
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to transaction documents.
+     * @path /transactions/{transactionId}
+     * @allow (get) User VUmakMpQ51b6njaBzK1adiIErJC2 can get their own transactions.
+     * @allow (create) User VUmakMpQ51b6njaBzK1adiIErJC2 can create a transaction with their user ID.
+     * @allow (update) User VUmakMpQ51b6njaBzK1adiIErJC2 can update their own transaction.
+     * @allow (delete) User VUmakMpQ51b6njaBzK1adiIErJC2 can delete their own transaction.
+     * @deny (get) User Wxyz cannot get user VUmakMpQ51b6njaBzK1adiIErJC2's transactions.
+     * @deny (create) User Wxyz cannot create a transaction for VUmakMpQ51b6njaBzK1adiIErJC2.
+     * @principle Enforces document ownership for transactions based on the userId field.
+     */
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if false;
+
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
     }
   }
 }
