@@ -40,7 +40,9 @@ export const useCollection = <T,>(q: Query | null) => {
       },
       (err) => {
         const permissionError = new FirestorePermissionError({
-          path: q.path,
+          // The path property does not exist on a query. We assume this hook is for collections.
+          // In a real app, you might want a more robust way to get the path.
+          path: (q as any)._query.path.segments.join('/'),
           operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);
