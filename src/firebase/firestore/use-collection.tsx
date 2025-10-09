@@ -2,16 +2,11 @@
 'use client';
 
 import {
-  collection,
   onSnapshot,
-  query,
-  type DocumentData,
-  type Firestore,
   type Query,
   type QuerySnapshot,
 } from 'firebase/firestore';
-import { useEffect, useMemo, useState } from 'react';
-import { useFirestore } from '../provider';
+import { useEffect, useState } from 'react';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
 
@@ -42,7 +37,7 @@ export const useCollection = <T,>(q: Query | null) => {
         const permissionError = new FirestorePermissionError({
           // The path property does not exist on a query. We assume this hook is for collections.
           // In a real app, you might want a more robust way to get the path.
-          path: (q as any)._query.path.segments.join('/'),
+          path: (q as any)._query?.path?.segments.join('/') ?? 'unknown path',
           operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);
@@ -52,7 +47,8 @@ export const useCollection = <T,>(q: Query | null) => {
     );
 
     return () => unsubscribe();
-  }, [q]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q ? (q as any)._query?.path?.segments.join('/') : null]);
 
   return { data, error, loading };
 };
