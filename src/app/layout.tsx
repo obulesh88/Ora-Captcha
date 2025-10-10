@@ -7,8 +7,19 @@ import SideNav from "@/components/common/SideNav";
 import FirebaseClientProvider from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: "ORA Captcha",
-  description: "Earn rewards by solving captchas.",
+  title: "Ora Captcha – Earn Money Solving Captchas",
+  description: "Solve captchas online with Ora Captcha and earn coins that you can convert to real rewards. Fast, easy, secure.",
+  keywords: ["Ora Captcha", "earn money online", "captcha app", "reward app", "task earning"],
+  robots: "index, follow",
+  openGraph: {
+    title: "Ora Captcha – Earn Money Solving Captchas",
+    description: "Solve captchas online with Ora Captcha and earn coins that you can convert to real rewards.",
+    type: "website",
+    url: "https://www.oracaptcha.com",
+  },
+  alternates: {
+    canonical: "https://www.oracaptcha.com",
+  }
 };
 
 export default function RootLayout({
