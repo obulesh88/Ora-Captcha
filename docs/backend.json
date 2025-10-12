@@ -56,9 +56,14 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp of the transaction."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the transaction (e.g., 'pending', 'successful', 'failed').",
+          "enum": ["pending", "successful", "failed", "completed"]
         }
       },
-      "required": ["userId", "type", "amount", "date"]
+      "required": ["userId", "type", "amount", "date", "status"]
     }
   },
   "auth": {

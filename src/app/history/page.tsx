@@ -1,3 +1,4 @@
+
 'use client';
 
 import Header from '@/components/common/Header';
@@ -17,6 +18,7 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Transaction {
   id: string;
@@ -27,7 +29,15 @@ interface Transaction {
     nanoseconds: number;
   };
   userId: string;
+  status: 'pending' | 'successful' | 'failed' | 'completed';
 }
+
+const statusVariantMap = {
+    pending: 'secondary',
+    successful: 'default',
+    completed: 'default',
+    failed: 'destructive',
+};
 
 export default function HistoryPage() {
   const { user, loading: userLoading } = useUser();
@@ -76,6 +86,7 @@ export default function HistoryPage() {
               <TableRow>
                 <TableHead>Type</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
             </TableHeader>
@@ -89,8 +100,16 @@ export default function HistoryPage() {
                         transaction.date.seconds * 1000
                       ).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={statusVariantMap[transaction.status] || 'default'}
+                        className={cn('capitalize', (statusVariantMap[transaction.status] === 'default' || statusVariantMap[transaction.status] === 'destructive') && 'text-white')}
+                      >
+                        {transaction.status}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Badge
+                       <Badge
                         variant={
                           transaction.amount > 0 ? 'default' : 'destructive'
                         }
@@ -104,7 +123,7 @@ export default function HistoryPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center">
+                  <TableCell colSpan={4} className="text-center">
                     No transactions yet.
                   </TableCell>
                 </TableRow>

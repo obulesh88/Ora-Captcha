@@ -90,10 +90,10 @@ export default function WalletPage() {
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !userDocRef) return;
-
+    if (!user || !firestore) return;
+  
     const amount = parseInt(redeemAmount, 10);
-
+  
     if (isNaN(amount) || amount <= 0) {
       toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid number of ORA coins to redeem.' });
       return;
@@ -106,58 +106,47 @@ export default function WalletPage() {
       toast({ variant: 'destructive', title: 'Maximum Withdrawal', description: 'The maximum withdrawal amount is 1000 ORA coins.' });
       return;
     }
-     if (balance < amount) {
-      toast({ variant: "destructive", title: 'Insufficient Funds', description: "You don't have enough ORA coins to withdraw that amount." });
+    if (balance < amount) {
+      toast({ variant: "destructive", title: 'Insufficient Funds', description: "You don't have enough ORA coins to request that withdrawal." });
       return;
     }
     
     setIsRedeeming(true);
-
-    const batch = writeBatch(firestore);
-
-    // 1. Decrement user's balance
-    batch.update(userDocRef, { balance: increment(-amount) });
-
-    // 2. Create a transaction record
+  
     const newTransactionRef = doc(collection(firestore, 'transactions'));
-    batch.set(newTransactionRef, {
+    const transactionData = {
       userId: user.uid,
       type: 'Withdrawal',
       amount: -amount,
       date: serverTimestamp(),
-    });
-    
-    try {
-      await batch.commit();
-      toast({
-        title: 'Redemption Successful!',
-        description: `You have redeemed ${amount} ORA coins.`,
-        className: 'bg-accent text-accent-foreground',
-      });
-      setRedeemAmount('');
-
-    } catch (error: any) {
-      console.error("Batch write failed: ", error);
-       if (error.code === 'permission-denied') {
-         const permissionError = new FirestorePermissionError({
-           path: 'batch-write', // Batched writes don't have a single path
-           operation: 'update',
-           requestResourceData: {
-             userUpdate: { balance: `increment(${-amount})`},
-             transactionCreate: { type: 'Withdrawal', amount: -amount }
-           },
-         });
-         errorEmitter.emit('permission-error', permissionError);
-      } else {
+      status: 'pending', // Set status to pending
+    };
+  
+    setDoc(newTransactionRef, transactionData)
+      .then(() => {
+        toast({
+          title: 'Withdrawal Request Submitted!',
+          description: `Your request to withdraw ${amount} ORA coins is pending.`,
+          className: 'bg-accent text-accent-foreground',
+        });
+        setRedeemAmount('');
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: newTransactionRef.path,
+          operation: 'create',
+          requestResourceData: transactionData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
         toast({
           variant: 'destructive',
-          title: 'Redemption Failed',
-          description: error.message || "Could not complete the transaction.",
+          title: 'Request Failed',
+          description: error.message || "Could not submit your withdrawal request.",
         });
-      }
-    } finally {
+      })
+      .finally(() => {
         setIsRedeeming(false);
-    }
+      });
   };
 
 
@@ -294,7 +283,7 @@ export default function WalletPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" size="lg" disabled={isRedeeming}>
-                    {isRedeeming ? 'Processing...' : 'Redeem Now'}
+                    {isRedeeming ? 'Processing...' : 'Request Withdrawal'}
                   </Button>
                 </CardFooter>
               </form>
@@ -305,5 +294,3 @@ export default function WalletPage() {
     </div>
   );
 }
-
-    

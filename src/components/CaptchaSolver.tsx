@@ -138,7 +138,8 @@ export default function CaptchaSolver() {
         userId: user.uid,
         type: 'Captcha Solved',
         amount: earnedCoins,
-        date: serverTimestamp()
+        date: serverTimestamp(),
+        status: 'completed',
     };
     addDoc(transactionsColRef, transactionData)
       .then(() => {

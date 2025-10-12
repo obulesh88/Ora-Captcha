@@ -75,6 +75,7 @@ export default function Home() {
       type: 'Ad Watched',
       amount: adReward,
       date: serverTimestamp(),
+      status: 'completed',
     };
     addDoc(transactionsColRef, transactionData)
       .then(() => {
