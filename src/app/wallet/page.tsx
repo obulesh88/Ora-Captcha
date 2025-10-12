@@ -106,34 +106,29 @@ export default function WalletPage() {
       toast({ variant: 'destructive', title: 'Maximum Withdrawal', description: 'The maximum withdrawal amount is 1000 ORA coins.' });
       return;
     }
+     if (balance < amount) {
+      toast({ variant: "destructive", title: 'Insufficient Funds', description: "You don't have enough ORA coins to withdraw that amount." });
+      return;
+    }
     
     setIsRedeeming(true);
 
+    const batch = writeBatch(firestore);
+
+    // 1. Decrement user's balance
+    batch.update(userDocRef, { balance: increment(-amount) });
+
+    // 2. Create a transaction record
+    const newTransactionRef = doc(collection(firestore, 'transactions'));
+    batch.set(newTransactionRef, {
+      userId: user.uid,
+      type: 'Withdrawal',
+      amount: -amount,
+      date: serverTimestamp(),
+    });
+    
     try {
-      await runTransaction(firestore, async (transaction) => {
-        const userDoc = await transaction.get(userDocRef);
-        if (!userDoc.exists()) {
-          throw new Error("User document does not exist!");
-        }
-
-        const currentBalance = userDoc.data().balance || 0;
-        if (currentBalance < amount) {
-          throw new Error("Insufficient balance.");
-        }
-
-        // 1. Decrement user's balance
-        transaction.update(userDocRef, { balance: increment(-amount) });
-
-        // 2. Create a transaction record
-        const newTransactionRef = doc(collection(firestore, 'transactions'));
-        transaction.set(newTransactionRef, {
-          userId: user.uid,
-          type: 'Withdrawal',
-          amount: -amount,
-          date: serverTimestamp(),
-        });
-      });
-      
+      await batch.commit();
       toast({
         title: 'Redemption Successful!',
         description: `You have redeemed ${amount} ORA coins.`,
@@ -142,9 +137,17 @@ export default function WalletPage() {
       setRedeemAmount('');
 
     } catch (error: any) {
-      console.error("Transaction failed: ", error);
-      if (error instanceof FirestorePermissionError) {
-        errorEmitter.emit('permission-error', error);
+      console.error("Batch write failed: ", error);
+       if (error.code === 'permission-denied') {
+         const permissionError = new FirestorePermissionError({
+           path: 'batch-write', // Batched writes don't have a single path
+           operation: 'update',
+           requestResourceData: {
+             userUpdate: { balance: `increment(${-amount})`},
+             transactionCreate: { type: 'Withdrawal', amount: -amount }
+           },
+         });
+         errorEmitter.emit('permission-error', permissionError);
       } else {
         toast({
           variant: 'destructive',
@@ -302,3 +305,5 @@ export default function WalletPage() {
     </div>
   );
 }
+
+    
