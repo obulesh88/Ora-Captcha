@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase';
-import { collection, query, where, orderBy, doc, writeBatch, increment, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -36,12 +36,19 @@ interface Transaction {
   status: 'pending' | 'successful' | 'failed' | 'completed';
 }
 
-const statusVariantMap = {
+const statusVariantMap: { [key in Transaction['status']]: 'default' | 'secondary' | 'destructive' | 'outline' | null | undefined } = {
     pending: 'secondary',
     successful: 'default',
-    completed: 'default',
+    completed: 'outline',
     failed: 'destructive',
 };
+
+const statusClassMap: { [key in Transaction['status']]: string } = {
+    pending: '',
+    successful: 'bg-accent text-accent-foreground',
+    completed: '',
+    failed: '',
+}
 
 export default function HistoryPage() {
   const { user, loading: userLoading } = useUser();
@@ -143,8 +150,8 @@ export default function HistoryPage() {
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        variant={statusVariantMap[transaction.status] || 'default'}
-                        className={cn('capitalize', (statusVariantMap[transaction.status] === 'default' || statusVariantMap[transaction.status] === 'destructive') && 'text-white')}
+                        variant={statusVariantMap[transaction.status]}
+                        className={cn('capitalize', statusClassMap[transaction.status])}
                       >
                         {transaction.status}
                       </Badge>
@@ -154,7 +161,7 @@ export default function HistoryPage() {
                         variant={
                           transaction.amount > 0 ? 'default' : 'destructive'
                         }
-                        className="text-white"
+                        className={cn(transaction.amount > 0 && 'bg-accent text-accent-foreground')}
                       >
                         {transaction.amount > 0 ? '+' : ''}
                         {transaction.amount.toLocaleString()} ORA 🪙
