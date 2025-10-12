@@ -98,8 +98,8 @@ export default function WalletPage() {
       toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid number of ORA coins to redeem.' });
       return;
     }
-    if (amount < 10) {
-      toast({ variant: 'destructive', title: 'Minimum Withdrawal', description: 'The minimum withdrawal amount is 10 ORA coins.' });
+    if (amount < 1) {
+      toast({ variant: 'destructive', title: 'Minimum Withdrawal', description: 'The minimum withdrawal amount is 1 ORA coin.' });
       return;
     }
     if (amount > 1000) {
@@ -271,7 +271,7 @@ export default function WalletPage() {
                 <CardHeader>
                   <CardTitle>Enter Amount to Redeem</CardTitle>
                   <CardDescription>
-                    1,000 ORA Coins = ₹1.00 INR. Min 10, Max 1,000.
+                    1,000 ORA Coins = ₹1.00 INR. Min 1, Max 1,000.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
