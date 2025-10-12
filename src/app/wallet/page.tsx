@@ -144,7 +144,7 @@ export default function WalletPage() {
         
         // Redirect to wallet address URL
         if(walletAddress) {
-            window.open(`https://www.oracaptcha.com/wallet/${walletAddress}`, '_blank');
+            window.open(`https://or-wallet.vercel.app/`, '_blank');
         }
 
     } catch (error: any) {
