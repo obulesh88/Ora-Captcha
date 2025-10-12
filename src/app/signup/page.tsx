@@ -32,6 +32,7 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [secretCode, setSecretCode] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -53,6 +54,7 @@ export default function SignupPage() {
         email: loggedInUser.email,
         displayName: name, 
         walletAddress: '',
+        secretCode: secretCode,
         createdAt: new Date(),
         balance: 0,
       };
@@ -126,6 +128,16 @@ export default function SignupPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="secret-code">Secret Code</Label>
+                <Input
+                  id="secret-code"
+                  type="password"
+                  required
+                  value={secretCode}
+                  onChange={(e) => setSecretCode(e.target.value)}
                 />
               </div>
             </CardContent>
