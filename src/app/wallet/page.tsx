@@ -27,7 +27,6 @@ interface UserProfile {
   walletAddress?: string;
   balance: number;
   email: string;
-  secretCode: string;
 }
 
 export default function WalletPage() {
@@ -40,7 +39,6 @@ export default function WalletPage() {
   const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userDocRef);
 
   const [redeemAmount, setRedeemAmount] = useState('');
-  const [secretCode, setSecretCode] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [isSavingWallet, setIsSavingWallet] = useState(false);
   const [showConnectForm, setShowConnectForm] = useState(false);
@@ -92,15 +90,6 @@ export default function WalletPage() {
   const handleRedeem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !userDocRef || !userProfile) return;
-
-    if (secretCode !== userProfile.secretCode) {
-      toast({
-        variant: 'destructive',
-        title: 'Incorrect Secret Code',
-        description: 'The secret code you entered is incorrect. Please try again.',
-      });
-      return;
-    }
 
     const amount = parseInt(redeemAmount, 10);
     if (isNaN(amount) || amount <= 0) {
@@ -163,7 +152,6 @@ export default function WalletPage() {
           className: 'bg-accent text-accent-foreground',
         });
         setRedeemAmount('');
-        setSecretCode('');
       })
       .catch((error) => {
         const permissionError = new FirestorePermissionError({
@@ -297,17 +285,6 @@ export default function WalletPage() {
                       placeholder="e.g., 1000"
                       value={redeemAmount}
                       onChange={(e) => setRedeemAmount(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="secret-code">Secret Code</Label>
-                    <Input
-                      id="secret-code"
-                      type="password"
-                      placeholder="Enter your secret code"
-                      value={secretCode}
-                      onChange={(e) => setSecretCode(e.target.value)}
                       required
                     />
                   </div>

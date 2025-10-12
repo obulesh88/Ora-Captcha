@@ -23,10 +23,6 @@
           "type": "string",
           "description": "The user's unique ORA wallet address."
         },
-        "secretCode": {
-            "type": "string",
-            "description": "A secret code for the user to authorize withdrawals."
-        },
         "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -37,7 +33,7 @@
             "description": "The user's ORA coin balance."
         }
       },
-      "required": ["uid", "email", "walletAddress", "secretCode", "createdAt", "balance"]
+      "required": ["uid", "email", "walletAddress", "createdAt", "balance"]
     },
     "transaction": {
       "title": "Transaction",
