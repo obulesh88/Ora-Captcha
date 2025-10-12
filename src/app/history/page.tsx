@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase';
-import { collection, query, where, orderBy, doc, writeBatch, increment } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, writeBatch, increment, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -69,38 +69,31 @@ export default function HistoryPage() {
 
     setVerifyingId(transaction.id);
 
-    const batch = writeBatch(firestore);
-
-    // 1. Update transaction status
     const transactionRef = doc(firestore, 'transactions', transaction.id);
-    batch.update(transactionRef, { status: 'successful' });
+    const data = { status: 'successful' };
 
-    // 2. Debit user's balance
-    const userRef = doc(firestore, 'users', user.uid);
-    // transaction.amount is negative for withdrawals, so incrementing by it will decrease the balance.
-    batch.update(userRef, { balance: increment(transaction.amount) });
-
-    try {
-      await batch.commit();
-      toast({
-        title: 'Withdrawal Successful!',
-        description: `${-transaction.amount} ORA coins have been transferred.`,
-        className: 'bg-accent text-accent-foreground',
-      });
-    } catch (error: any) {
+    updateDoc(transactionRef, data)
+    .then(() => {
+        toast({
+            title: 'Withdrawal Verified!',
+            description: `The transaction is now marked as successful.`,
+            className: 'bg-accent text-accent-foreground',
+        });
+    }).catch((error: any) => {
        const permissionError = new FirestorePermissionError({
-          path: `batch write for ${userRef.path} and ${transactionRef.path}`,
+          path: transactionRef.path,
           operation: 'update',
+          requestResourceData: data
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({
           variant: 'destructive',
           title: 'Verification Failed',
-          description: error.message || "Could not complete the withdrawal.",
+          description: error.message || "Could not update the transaction.",
         });
-    } finally {
+    }).finally(() => {
         setVerifyingId(null);
-    }
+    });
   };
 
 

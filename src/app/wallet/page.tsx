@@ -90,7 +90,7 @@ export default function WalletPage() {
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userDocRef) return;
   
     const amount = parseInt(redeemAmount, 10);
   
@@ -106,47 +106,54 @@ export default function WalletPage() {
       toast({ variant: 'destructive', title: 'Maximum Withdrawal', description: 'The maximum withdrawal amount is 1000 ORA coins.' });
       return;
     }
-    if (balance < amount) {
-      toast({ variant: "destructive", title: 'Insufficient Funds', description: "You don't have enough ORA coins to request that withdrawal." });
-      return;
-    }
     
     setIsRedeeming(true);
-  
-    const newTransactionRef = doc(collection(firestore, 'transactions'));
-    const transactionData = {
-      userId: user.uid,
-      type: 'Withdrawal',
-      amount: -amount,
-      date: serverTimestamp(),
-      status: 'pending', // Set status to pending
-    };
-  
-    setDoc(newTransactionRef, transactionData)
-      .then(() => {
+
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists()) {
+                throw new Error("User does not exist!");
+            }
+
+            const currentBalance = userDoc.data().balance || 0;
+            if (currentBalance < amount) {
+                throw new Error("Insufficient funds.");
+            }
+
+            // Debit balance immediately to put funds "on hold"
+            transaction.update(userDocRef, { balance: increment(-amount) });
+
+            // Create the pending transaction record
+            const newTransactionRef = doc(collection(firestore, 'transactions'));
+            transaction.set(newTransactionRef, {
+                userId: user.uid,
+                type: 'Withdrawal',
+                amount: -amount, // Store as negative
+                date: serverTimestamp(),
+                status: 'pending',
+            });
+        });
+
         toast({
-          title: 'Withdrawal Request Submitted!',
-          description: `Your request to withdraw ${amount} ORA coins is pending.`,
-          className: 'bg-accent text-accent-foreground',
+            title: 'Withdrawal Request Submitted!',
+            description: `Your request to withdraw ${amount} ORA coins is pending.`,
+            className: 'bg-accent text-accent-foreground',
         });
         setRedeemAmount('');
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: newTransactionRef.path,
-          operation: 'create',
-          requestResourceData: transactionData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+
+    } catch (error: any) {
+        // We don't create a permission error here because runTransaction
+        // does not expose enough context for a detailed error.
+        // The individual operations inside would be caught by other handlers if they fail.
         toast({
-          variant: 'destructive',
-          title: 'Request Failed',
-          description: error.message || "Could not submit your withdrawal request.",
+            variant: 'destructive',
+            title: 'Request Failed',
+            description: error.message || "Could not submit your withdrawal request.",
         });
-      })
-      .finally(() => {
+    } finally {
         setIsRedeeming(false);
-      });
+    }
   };
 
 
