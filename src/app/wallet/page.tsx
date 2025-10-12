@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -41,6 +41,7 @@ export default function WalletPage() {
   const [redeemAmount, setRedeemAmount] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [isSavingWallet, setIsSavingWallet] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false);
   const [showConnectForm, setShowConnectForm] = useState(false);
   const { toast } = useToast();
   
@@ -87,81 +88,75 @@ export default function WalletPage() {
   };
 
 
-  const handleRedeem = (e: React.FormEvent) => {
+  const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !userDocRef || !userProfile) return;
+    if (!user || !userDocRef) return;
 
     const amount = parseInt(redeemAmount, 10);
+
     if (isNaN(amount) || amount <= 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid Amount',
-        description: 'Please enter a valid number of ORA coins to redeem.',
-      });
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid number of ORA coins to redeem.' });
       return;
     }
     if (amount < 10) {
-      toast({
-        variant: 'destructive',
-        title: 'Minimum Withdrawal',
-        description: 'The minimum withdrawal amount is 10 ORA coins.',
-      });
+      toast({ variant: 'destructive', title: 'Minimum Withdrawal', description: 'The minimum withdrawal amount is 10 ORA coins.' });
       return;
     }
     if (amount > 1000) {
-      toast({
-        variant: 'destructive',
-        title: 'Maximum Withdrawal',
-        description: 'The maximum withdrawal amount is 1000 ORA coins.',
-      });
-      return;
-    }
-    if (amount > balance) {
-      toast({
-        variant: 'destructive',
-        title: 'Insufficient Balance',
-        description: "You don't have enough ORA coins to redeem this amount.",
-      });
+      toast({ variant: 'destructive', title: 'Maximum Withdrawal', description: 'The maximum withdrawal amount is 1000 ORA coins.' });
       return;
     }
     
-    updateDoc(userDocRef, {
-      balance: increment(-amount)
-    }).catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: { balance: `increment(${-amount})` }
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    });
+    setIsRedeeming(true);
 
-    const transactionsColRef = collection(firestore, 'transactions');
-    const transactionData = {
-      userId: user.uid,
-      type: 'Withdrawal',
-      amount: -amount,
-      date: serverTimestamp(),
-    };
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const userDoc = await transaction.get(userDocRef);
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist!");
+        }
 
-    addDoc(transactionsColRef, transactionData)
-      .then(() => {
-        toast({
-          title: 'Redemption Successful!',
-          description: `You have redeemed ${amount} ORA coins.`,
-          className: 'bg-accent text-accent-foreground',
+        const currentBalance = userDoc.data().balance || 0;
+        if (currentBalance < amount) {
+          throw new Error("Insufficient balance.");
+        }
+
+        // 1. Decrement user's balance
+        transaction.update(userDocRef, { balance: increment(-amount) });
+
+        // 2. Create a transaction record
+        const newTransactionRef = doc(collection(firestore, 'transactions'));
+        transaction.set(newTransactionRef, {
+          userId: user.uid,
+          type: 'Withdrawal',
+          amount: -amount,
+          date: serverTimestamp(),
         });
-        setRedeemAmount('');
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: transactionsColRef.path,
-          operation: 'create',
-          requestResourceData: transactionData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
       });
+      
+      toast({
+        title: 'Redemption Successful!',
+        description: `You have redeemed ${amount} ORA coins.`,
+        className: 'bg-accent text-accent-foreground',
+      });
+      setRedeemAmount('');
+
+    } catch (error: any) {
+      console.error("Transaction failed: ", error);
+      if (error instanceof FirestorePermissionError) {
+        errorEmitter.emit('permission-error', error);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Redemption Failed',
+          description: error.message || "Could not complete the transaction.",
+        });
+      }
+    } finally {
+        setIsRedeeming(false);
+    }
   };
+
 
   const rupeesValue = useMemo(() => {
     const amount = parseInt(redeemAmount, 10);
@@ -295,8 +290,8 @@ export default function WalletPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full" size="lg">
-                    Redeem Now
+                  <Button type="submit" className="w-full" size="lg" disabled={isRedeeming}>
+                    {isRedeeming ? 'Processing...' : 'Redeem Now'}
                   </Button>
                 </CardFooter>
               </form>
