@@ -16,7 +16,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { signOut } from 'firebase/auth';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -54,16 +53,6 @@ export default function WalletPage() {
     }
   }, [user, loading, router]);
 
-
-  const handleDisconnect = async () => {
-    if(!auth) return;
-    await signOut(auth);
-    toast({
-      title: 'Logged Out',
-      description: 'You have been successfully logged out.',
-    });
-    router.push('/login');
-  };
 
   const handleSaveWallet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +97,22 @@ export default function WalletPage() {
         variant: 'destructive',
         title: 'Invalid Amount',
         description: 'Please enter a valid number of ORA coins to redeem.',
+      });
+      return;
+    }
+    if (amount < 10) {
+      toast({
+        variant: 'destructive',
+        title: 'Minimum Withdrawal',
+        description: 'The minimum withdrawal amount is 10 ORA coins.',
+      });
+      return;
+    }
+    if (amount > 1000) {
+      toast({
+        variant: 'destructive',
+        title: 'Maximum Withdrawal',
+        description: 'The maximum withdrawal amount is 1000 ORA coins.',
       });
       return;
     }
@@ -268,7 +273,7 @@ export default function WalletPage() {
                 <CardHeader>
                   <CardTitle>Enter Amount to Redeem</CardTitle>
                   <CardDescription>
-                    1,000 ORA Coins = ₹1.00 INR.
+                    1,000 ORA Coins = ₹1.00 INR. Min 10, Max 1,000.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
