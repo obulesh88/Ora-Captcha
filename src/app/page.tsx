@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
 import CaptchaSolver from "@/components/CaptchaSolver";
 import Header from "@/components/common/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlayCircle, Loader2 } from "lucide-react";
+import { PlayCircle, Loader2, CheckCircle } from "lucide-react";
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -19,18 +19,45 @@ export default function Home() {
   const router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [adWatched, setAdWatched] = useState(false);
+  const [canClaimAdReward, setCanClaimAdReward] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+  
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (adWatched) {
+      timer = setTimeout(() => {
+        setCanClaimAdReward(true);
+        toast({
+            title: "Ready to Claim!",
+            description: "You can now claim your reward for watching the ad.",
+        });
+      }, 10000); // 10 second delay
+    }
+    return () => clearTimeout(timer);
+  }, [adWatched, toast]);
 
   const handleWatchAd = () => {
-    if (!user) return;
-    const userDocRef = doc(firestore, 'users', user.uid);
-    const adReward = 3;
+    window.open('https://enviousgarbage.com/b/3-Vk0.Ph3HpHv/bfmUVNJ_ZtDF0P2tN/jZISzUMtTPg_3tLmTzYv2XMWjBM/xROPD/gn', '_blank');
+    setAdWatched(true);
+    toast({
+        title: "Ad Started!",
+        description: "Please view the ad, then claim your reward.",
+        className: 'bg-accent text-accent-foreground',
+    });
+  };
 
+  const handleClaimAdReward = () => {
+    if (!user || !canClaimAdReward) return;
+
+    const adReward = 3;
+    const userDocRef = doc(firestore, 'users', user.uid);
+    
     updateDoc(userDocRef, {
       balance: increment(adReward)
     }).catch((error) => {
@@ -65,6 +92,10 @@ export default function Home() {
         });
         errorEmitter.emit('permission-error', permissionError);
       });
+      
+    // Reset state
+    setAdWatched(false);
+    setCanClaimAdReward(false);
   };
 
 
@@ -96,10 +127,17 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" size="lg" onClick={handleWatchAd}>
-                <PlayCircle className="mr-2 h-5 w-5" />
-                Watch Rewarded Ad (3 ORA Coins)
-              </Button>
+              {!adWatched ? (
+                <Button className="w-full" size="lg" onClick={handleWatchAd}>
+                  <PlayCircle className="mr-2 h-5 w-5" />
+                  Watch Rewarded Ad (3 ORA Coins)
+                </Button>
+              ) : (
+                <Button className="w-full" size="lg" onClick={handleClaimAdReward} disabled={!canClaimAdReward}>
+                  <CheckCircle className="mr-2 h-5 w-5" />
+                  {canClaimAdReward ? 'Claim Ad Reward' : 'Wait to Claim...'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
