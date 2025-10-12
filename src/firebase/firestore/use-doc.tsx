@@ -6,14 +6,24 @@ import {
   type DocumentReference,
   type DocumentSnapshot,
 } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
+
+const getRefPath = (ref: DocumentReference | null) => {
+    try {
+        return ref ? ref.path : null;
+    } catch(e) {
+        return null;
+    }
+}
 
 export const useDoc = <T,>(ref: DocumentReference | null) => {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  const refPath = useMemo(() => getRefPath(ref), [ref]);
 
   useEffect(() => {
     if (!ref) {
@@ -47,7 +57,7 @@ export const useDoc = <T,>(ref: DocumentReference | null) => {
     );
 
     return () => unsubscribe();
-  }, [ref]);
+  }, [refPath]);
 
   return { data, error, loading };
 };

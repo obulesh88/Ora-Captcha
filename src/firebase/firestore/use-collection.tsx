@@ -6,14 +6,24 @@ import {
   type Query,
   type QuerySnapshot,
 } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
+
+const getQueryPath = (q: Query | null) => {
+    try {
+        return q ? (q as any)._query.path.segments.join('/') : null;
+    } catch (e) {
+        return null;
+    }
+}
 
 export const useCollection = <T,>(q: Query | null) => {
   const [data, setData] = useState<T[] | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  const queryPath = useMemo(() => getQueryPath(q), [q]);
 
   useEffect(() => {
     if (!q) {
@@ -48,7 +58,7 @@ export const useCollection = <T,>(q: Query | null) => {
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q ? (q as any)._query?.path?.segments.join('/') : null]);
+  }, [queryPath]);
 
   return { data, error, loading };
 };
