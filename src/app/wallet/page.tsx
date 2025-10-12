@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -90,7 +90,7 @@ export default function WalletPage() {
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !firestore || !userDocRef) return;
+    if (!user || !firestore || !userDocRef || !walletAddress) return;
   
     const amount = parseInt(redeemAmount, 10);
   
@@ -129,7 +129,7 @@ export default function WalletPage() {
             transaction.set(newTransactionRef, {
                 userId: user.uid,
                 type: 'Withdrawal',
-                amount: -amount, // Store as negative
+                amount: -amount,
                 date: serverTimestamp(),
                 status: 'pending',
             });
@@ -141,6 +141,11 @@ export default function WalletPage() {
             className: 'bg-accent text-accent-foreground',
         });
         setRedeemAmount('');
+        
+        // Redirect to wallet address URL
+        if(walletAddress) {
+            window.open(`https://www.oracaptcha.com/wallet/${walletAddress}`, '_blank');
+        }
 
     } catch (error: any) {
         // We don't create a permission error here because runTransaction
