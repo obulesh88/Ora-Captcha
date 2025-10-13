@@ -54,7 +54,6 @@ export default function HistoryPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const transactionsQuery = useMemo(() => {
     if (!user) return null;
@@ -69,40 +68,6 @@ export default function HistoryPage() {
     data: transactions,
     loading: transactionsLoading,
   } = useCollection<Transaction>(transactionsQuery);
-
-  const handleVerify = async (transaction: Transaction) => {
-    if (!user || !firestore) return;
-    if (transaction.status !== 'pending' || transaction.type !== 'Withdrawal') return;
-
-    setVerifyingId(transaction.id);
-
-    const transactionRef = doc(firestore, 'transactions', transaction.id);
-    const data = { status: 'successful' };
-
-    updateDoc(transactionRef, data)
-    .then(() => {
-        toast({
-            title: 'Withdrawal Verified!',
-            description: `The transaction is now marked as successful.`,
-            className: 'bg-accent text-accent-foreground',
-        });
-    }).catch((error: any) => {
-       const permissionError = new FirestorePermissionError({
-          path: transactionRef.path,
-          operation: 'update',
-          requestResourceData: data
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Verification Failed',
-          description: error.message || "Could not update the transaction.",
-        });
-    }).finally(() => {
-        setVerifyingId(null);
-    });
-  };
-
 
   if (userLoading || transactionsLoading) {
     return (
@@ -135,7 +100,6 @@ export default function HistoryPage() {
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -167,29 +131,18 @@ export default function HistoryPage() {
                         {transaction.amount.toLocaleString()} ORA 🪙
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {transaction.type === 'Withdrawal' && transaction.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerify(transaction)}
-                          disabled={verifyingId === transaction.id}
-                        >
-                          {verifyingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
-                        </Button>
-                      )}
-                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={4} className="text-center">
                     No transactions yet.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
             <TableCaption>
-              Your transaction history. Pending withdrawals require verification.
+              Your complete transaction history.
             </TableCaption>
           </Table>
         </div>

@@ -121,31 +121,26 @@ export default function WalletPage() {
                 throw new Error("Insufficient funds.");
             }
 
-            // Debit balance immediately to put funds "on hold"
+            // Debit balance immediately
             transaction.update(userDocRef, { balance: increment(-amount) });
 
-            // Create the pending transaction record
+            // Create the successful transaction record
             const newTransactionRef = doc(collection(firestore, 'transactions'));
             transaction.set(newTransactionRef, {
                 userId: user.uid,
                 type: 'Withdrawal',
                 amount: -amount,
                 date: serverTimestamp(),
-                status: 'pending',
+                status: 'successful',
             });
         });
 
         toast({
-            title: 'Withdrawal Request Submitted!',
-            description: `Your request to withdraw ${amount} ORA coins is pending.`,
+            title: 'Withdrawal Successful!',
+            description: `${amount} ORA coins have been sent to your wallet.`,
             className: 'bg-accent text-accent-foreground',
         });
         setRedeemAmount('');
-        
-        // Redirect to wallet address URL
-        if(walletAddress) {
-            window.open(`https://or-wallet.vercel.app/`, '_blank');
-        }
 
     } catch (error: any) {
         // We don't create a permission error here because runTransaction
@@ -154,7 +149,7 @@ export default function WalletPage() {
         toast({
             variant: 'destructive',
             title: 'Request Failed',
-            description: error.message || "Could not submit your withdrawal request.",
+            description: error.message || "Could not complete your withdrawal.",
         });
     } finally {
         setIsRedeeming(false);
@@ -295,7 +290,7 @@ export default function WalletPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" size="lg" disabled={isRedeeming}>
-                    {isRedeeming ? 'Processing...' : 'Request Withdrawal'}
+                    {isRedeeming ? 'Processing...' : 'Withdraw'}
                   </Button>
                 </CardFooter>
               </form>
