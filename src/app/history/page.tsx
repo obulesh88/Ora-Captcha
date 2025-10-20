@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -23,6 +23,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Copy } from 'lucide-react';
+
 
 interface Transaction {
   id: string;
@@ -34,19 +37,20 @@ interface Transaction {
   };
   userId: string;
   status: 'pending' | 'successful' | 'failed' | 'completed';
+  referenceId?: string;
 }
 
 const statusVariantMap: { [key in Transaction['status']]: 'default' | 'secondary' | 'destructive' | 'outline' | null | undefined } = {
     pending: 'secondary',
-    successful: 'default',
-    completed: 'outline',
+    successful: 'outline',
+    completed: 'default',
     failed: 'destructive',
 };
 
 const statusClassMap: { [key in Transaction['status']]: string } = {
     pending: '',
-    successful: 'bg-accent text-accent-foreground',
-    completed: '',
+    successful: 'text-accent-foreground border-accent',
+    completed: 'bg-accent text-accent-foreground',
     failed: '',
 }
 
@@ -68,6 +72,15 @@ export default function HistoryPage() {
     data: transactions,
     loading: transactionsLoading,
   } = useCollection<Transaction>(transactionsQuery);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Copied!',
+      description: 'Reference ID copied to clipboard.',
+      className: 'bg-accent text-accent-foreground',
+    });
+  };
 
   if (userLoading || transactionsLoading) {
     return (
@@ -93,12 +106,14 @@ export default function HistoryPage() {
           </p>
         </div>
         <div className="border rounded-lg">
+        <TooltipProvider>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Type</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Reference ID</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
             </TableHeader>
@@ -120,6 +135,26 @@ export default function HistoryPage() {
                         {transaction.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      {transaction.referenceId && (
+                         <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(transaction.referenceId!)}
+                                className="flex items-center gap-2"
+                                >
+                                <span className="font-mono text-xs truncate max-w-[100px]">{transaction.referenceId}</span>
+                                <Copy className="h-3 w-3" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Copy Reference ID</p>
+                            </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                        <Badge
                         variant={
@@ -135,7 +170,7 @@ export default function HistoryPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     No transactions yet.
                   </TableCell>
                 </TableRow>
@@ -145,6 +180,7 @@ export default function HistoryPage() {
               Your complete transaction history.
             </TableCaption>
           </Table>
+          </TooltipProvider>
         </div>
       </main>
     </div>

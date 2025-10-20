@@ -61,6 +61,10 @@
           "type": "string",
           "description": "The status of the transaction (e.g., 'pending', 'successful', 'failed').",
           "enum": ["pending", "successful", "failed", "completed"]
+        },
+        "referenceId": {
+            "type": "string",
+            "description": "A unique reference ID for the transaction, especially for withdrawals."
         }
       },
       "required": ["userId", "type", "amount", "date", "status"]

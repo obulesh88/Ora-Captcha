@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction } from 'firebase/firestore';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -94,12 +94,8 @@ export default function WalletPage() {
   
     const amount = parseInt(redeemAmount, 10);
   
-    if (isNaN(amount) || amount <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid number of ORA coins to redeem.' });
-      return;
-    }
-    if (amount < 1) {
-      toast({ variant: 'destructive', title: 'Minimum Withdrawal', description: 'The minimum withdrawal amount is 1 ORA coin.' });
+    if (isNaN(amount) || amount < 1) {
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'The minimum withdrawal amount is 1 ORA coin.' });
       return;
     }
     if (amount > 1000) {
@@ -123,15 +119,20 @@ export default function WalletPage() {
 
             // Debit balance immediately
             transaction.update(userDocRef, { balance: increment(-amount) });
+            
+            // Create a unique reference ID for the withdrawal
+            const newTransactionRef = doc(collection(firestore, 'transactions'));
+            const referenceId = `WID-${Date.now()}-${newTransactionRef.id.slice(0, 6)}`;
+
 
             // Create the successful transaction record
-            const newTransactionRef = doc(collection(firestore, 'transactions'));
             transaction.set(newTransactionRef, {
                 userId: user.uid,
                 type: 'Withdrawal',
                 amount: -amount,
                 date: serverTimestamp(),
                 status: 'successful',
+                referenceId: referenceId,
             });
         });
 
