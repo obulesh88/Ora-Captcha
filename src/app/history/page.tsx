@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -25,7 +25,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy } from 'lucide-react';
-
 
 interface Transaction {
   id: string;
@@ -58,6 +57,7 @@ export default function HistoryPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   const transactionsQuery = useMemo(() => {
     if (!user) return null;
@@ -80,6 +80,44 @@ export default function HistoryPage() {
       description: 'Reference ID copied to clipboard.',
       className: 'bg-accent text-accent-foreground',
     });
+  };
+  
+  const handleVerify = (transaction: Transaction) => {
+    if (!user || !firestore) return;
+
+    setVerifying(transaction.id);
+    
+    // Simulate checking an external API
+    setTimeout(() => {
+      const transactionRef = doc(firestore, 'transactions', transaction.id);
+      
+      const updateData = { status: 'completed' };
+
+      updateDoc(transactionRef, updateData)
+        .then(() => {
+           toast({
+            title: "Verification Complete",
+            description: "Withdrawal has been marked as completed.",
+            className: "bg-accent text-accent-foreground",
+          });
+        })
+        .catch((error) => {
+          const permissionError = new FirestorePermissionError({
+            path: transactionRef.path,
+            operation: 'update',
+            requestResourceData: updateData
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          toast({
+            variant: "destructive",
+            title: "Verification Failed",
+            description: "Could not update transaction status.",
+          });
+        }).finally(() => {
+          setVerifying(null);
+        });
+
+    }, 2000); // Simulate a 2-second API call
   };
 
   if (userLoading || transactionsLoading) {
@@ -115,6 +153,7 @@ export default function HistoryPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Reference ID</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -166,11 +205,23 @@ export default function HistoryPage() {
                         {transaction.amount.toLocaleString()} ORA 🪙
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      {transaction.type === 'Withdrawal' && transaction.status === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleVerify(transaction)}
+                          disabled={verifying === transaction.id}
+                        >
+                          {verifying === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={6} className="text-center">
                     No transactions yet.
                   </TableCell>
                 </TableRow>
@@ -186,3 +237,5 @@ export default function HistoryPage() {
     </div>
   );
 }
+
+    

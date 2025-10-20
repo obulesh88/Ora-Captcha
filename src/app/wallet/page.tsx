@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -90,16 +90,12 @@ export default function WalletPage() {
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !firestore || !userDocRef || !walletAddress) return;
+    if (!user || !firestore || !userDocRef) return;
   
     const amount = parseInt(redeemAmount, 10);
   
     if (isNaN(amount) || amount < 1) {
       toast({ variant: 'destructive', title: 'Invalid Amount', description: 'The minimum withdrawal amount is 1 ORA coin.' });
-      return;
-    }
-    if (amount > 1000) {
-      toast({ variant: 'destructive', title: 'Maximum Withdrawal', description: 'The maximum withdrawal amount is 1000 ORA coins.' });
       return;
     }
     
@@ -117,31 +113,31 @@ export default function WalletPage() {
                 throw new Error("Insufficient funds.");
             }
 
-            // Debit balance immediately
+            // Hold funds by debiting balance immediately
             transaction.update(userDocRef, { balance: increment(-amount) });
             
             // Create a unique reference ID for the withdrawal
             const newTransactionRef = doc(collection(firestore, 'transactions'));
             const referenceId = `WID-${Date.now()}-${newTransactionRef.id.slice(0, 6)}`;
 
-
-            // Create the successful transaction record
+            // Create the pending transaction record
             transaction.set(newTransactionRef, {
                 userId: user.uid,
                 type: 'Withdrawal',
                 amount: -amount,
                 date: serverTimestamp(),
-                status: 'successful',
+                status: 'pending',
                 referenceId: referenceId,
             });
         });
 
         toast({
-            title: 'Withdrawal Successful!',
-            description: `${amount} ORA coins have been sent to your wallet.`,
+            title: 'Withdrawal Request Submitted!',
+            description: `Your request for ${amount} ORA is now pending.`,
             className: 'bg-accent text-accent-foreground',
         });
         setRedeemAmount('');
+        router.push('/history');
 
     } catch (error: any) {
         // We don't create a permission error here because runTransaction
@@ -150,7 +146,7 @@ export default function WalletPage() {
         toast({
             variant: 'destructive',
             title: 'Request Failed',
-            description: error.message || "Could not complete your withdrawal.",
+            description: error.message || "Could not complete your withdrawal request.",
         });
     } finally {
         setIsRedeeming(false);
@@ -268,7 +264,7 @@ export default function WalletPage() {
                 <CardHeader>
                   <CardTitle>Enter Amount to Redeem</CardTitle>
                   <CardDescription>
-                    1,000 ORA Coins = ₹1.00 INR. Min 1, Max 1,000.
+                    1,000 ORA Coins = ₹1.00 INR. Min 1.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -291,7 +287,7 @@ export default function WalletPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" size="lg" disabled={isRedeeming}>
-                    {isRedeeming ? 'Processing...' : 'Withdraw'}
+                    {isRedeeming ? 'Processing...' : 'Request Withdrawal'}
                   </Button>
                 </CardFooter>
               </form>
@@ -302,3 +298,5 @@ export default function WalletPage() {
     </div>
   );
 }
+
+    
