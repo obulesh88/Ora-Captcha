@@ -8,11 +8,15 @@ import { getFirestore } from 'firebase-admin/firestore';
 // Correctly initialize Firebase Admin SDK using environment variables
 if (!admin.apps.length) {
   try {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    // The raw private key string, which needs to be wrapped
+    const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !rawPrivateKey) {
         throw new Error('Firebase environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set.');
     }
+    
+    // Construct the full PEM-formatted private key
+    const privateKey = `-----BEGIN PRIVATE KEY-----\n${rawPrivateKey}\n-----END PRIVATE KEY-----\n`;
 
     admin.initializeApp({
       credential: admin.credential.cert({
