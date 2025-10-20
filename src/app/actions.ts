@@ -1,3 +1,4 @@
+
 'use server';
 
 import { antiBotProtection } from '@/ai/flows/anti-bot-protection';
@@ -37,20 +38,20 @@ export async function requestWithdrawal(
     return { success: false, error: 'Invalid arguments provided.' };
   }
 
-  // 1. Simulate calling the Supabase function
-  const supabaseUrl = 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/wallet-transfer';
-  const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // This should be a service_role key, kept securely on the server.
+  // 1. Call the Supabase function
+  const supabaseUrl = 'https://nwxgjyamiborsgfnzqcj.supabase.co/functions/v1/wallet-transfer';
+  // Note: For production, this should be a secure service_role key stored as an environment variable.
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53eGdqeWFtaWJvcnNnZm56cWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNTM4OTgsImV4cCI6MjA3NTgyOTg5OH0.EtGjkpdoCWEH6YWNr2LjIcFdlsZ-7URjUiLMcRpcfZE'; 
 
   const transferData = {
     to_address: walletAddress,
     amount: amount,
-    currency: 'inr',
+    currency: 'inr', // Or make this dynamic if needed
     reference_id: `ora_${userId}_${Date.now()}`,
   };
 
   try {
-    /* 
-    // This is where you would make the actual call to your Supabase function
+    // This is where you make the actual call to your Supabase function
     const response = await fetch(supabaseUrl, {
       method: 'POST',
       headers: {
@@ -66,9 +67,8 @@ export async function requestWithdrawal(
     }
     
     const result = await response.json();
-    */
 
-    // 2. Atomically update Firestore after a successful API call simulation
+    // 2. Atomically update Firestore after a successful API call
     const userDocRef = firestore.collection('users').doc(userId);
     const newTransactionRef = firestore.collection('transactions').doc();
 
@@ -94,11 +94,11 @@ export async function requestWithdrawal(
         date: new Date(),
         status: 'pending',
         // In a real scenario, you might store the transaction ID from the Supabase response
-        referenceId: transferData.reference_id,
+        referenceId: result.reference_id || transferData.reference_id,
       });
     });
 
-    return { success: true, referenceId: transferData.reference_id };
+    return { success: true, referenceId: result.reference_id || transferData.reference_id };
     
   } catch (error: any) {
     console.error('Withdrawal Request Error:', error);
