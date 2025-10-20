@@ -5,25 +5,26 @@ import { antiBotProtection } from '@/ai/flows/anti-bot-protection';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-if (!serviceAccountKey) {
-  throw new Error(
-    'FIREBASE_SERVICE_ACCOUNT_KEY env var is not set. Provide the service account JSON as an env var.'
-  );
-}
-
+// Correctly initialize Firebase Admin SDK using environment variables
 if (!admin.apps.length) {
   try {
-    const serviceAccount = JSON.parse(
-      Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
-    );
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+        throw new Error('Firebase environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set.');
+    }
+
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      }),
     });
   } catch (error: any)
     {
     throw new Error(
-      'FIREBASE_SERVICE_ACCOUNT_KEY contains invalid JSON: ' + error.message
+      'Firebase Admin initialization failed: ' + error.message
     );
   }
 }
@@ -61,6 +62,7 @@ export async function requestWithdrawal(
 
     if (!response.ok) {
       const errorBody = await response.json();
+      console.error('Supabase Error:', errorBody);
       throw new Error(errorBody.error || `Supabase transfer failed with status: ${response.status}`);
     }
     
@@ -120,4 +122,3 @@ export async function checkBotScore(actions: string[]) {
     };
   }
 }
-
