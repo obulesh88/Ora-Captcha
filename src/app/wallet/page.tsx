@@ -114,7 +114,7 @@ export default function WalletPage() {
   const rupeesValue = useMemo(() => {
     const amount = parseInt(redeemAmount, 10);
     if (!isNaN(amount) && amount > 0) {
-      return (amount / 1000).toFixed(2);
+      return amount.toFixed(2);
     }
     return '0.00';
   }, [redeemAmount]);
@@ -221,7 +221,7 @@ export default function WalletPage() {
                 <CardHeader>
                   <CardTitle>Enter Amount to Redeem</CardTitle>
                   <CardDescription>
-                    1,000 ORA Coins = ₹1.00 INR. Min 1.
+                    1 ORA Coin = ₹1.00 INR. Min 1.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -230,7 +230,7 @@ export default function WalletPage() {
                     <Input
                       id="redeem-amount"
                       type="number"
-                      placeholder="e.g., 1000"
+                      placeholder="e.g., 100"
                       value={redeemAmount}
                       onChange={(e) => setRedeemAmount(e.target.value)}
                       required
