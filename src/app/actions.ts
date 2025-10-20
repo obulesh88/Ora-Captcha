@@ -36,7 +36,7 @@ export async function requestWithdrawal(
   amount: number
 ) {
   if (!userId || !walletAddress || !amount || amount <= 0) {
-    return { success: false, error: 'Missing or invalid uid or amount' };
+    return { success: false, error: 'Missing or invalid parameters. Please check the user, wallet, and amount.' };
   }
 
   const supabaseUrl = 'https://nwxgjyamiborsgfnzqcj.supabase.co/functions/v1/wallet-transfer';
@@ -120,3 +120,4 @@ export async function checkBotScore(actions: string[]) {
     };
   }
 }
+
