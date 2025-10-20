@@ -8,15 +8,11 @@ import { getFirestore } from 'firebase-admin/firestore';
 // Correctly initialize Firebase Admin SDK using environment variables
 if (!admin.apps.length) {
   try {
-    // The raw private key string, which needs to be wrapped
-    const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !rawPrivateKey) {
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
         throw new Error('Firebase environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set.');
     }
-    
-    // Construct the full PEM-formatted private key
-    const privateKey = `-----BEGIN PRIVATE KEY-----\n${rawPrivateKey}\n-----END PRIVATE KEY-----\n`;
 
     admin.initializeApp({
       credential: admin.credential.cert({
@@ -27,8 +23,9 @@ if (!admin.apps.length) {
     });
   } catch (error: any)
     {
+    console.error('Firebase Admin initialization failed:', error);
     throw new Error(
-      'Firebase Admin initialization failed: ' + error.message
+      'Firebase Admin initialization failed. Please check your service account credentials in the environment variables.'
     );
   }
 }
@@ -49,7 +46,7 @@ export async function requestWithdrawal(
 
   const transferData = {
     to_address: walletAddress,
-    amount: amount, // 1 coin = 1 rupee, so amount is correct
+    amount: amount,
     currency: 'inr', 
     reference_id: `ora_${userId}_${Date.now()}`,
   };
