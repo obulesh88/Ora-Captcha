@@ -202,7 +202,7 @@ export default function HistoryPage() {
                         className={cn(transaction.amount > 0 && 'bg-accent text-accent-foreground')}
                       >
                         {transaction.amount > 0 ? '+' : ''}
-                        {transaction.amount.toLocaleString()} ORA 🪙
+                        {Math.abs(transaction.amount).toLocaleString()} ORA 🪙
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -237,5 +237,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-
-    

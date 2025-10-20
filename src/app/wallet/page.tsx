@@ -35,7 +35,7 @@ export default function WalletPage() {
   const router = useRouter();
   
   const userDocRef = useMemo(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: userProfile, loading: profileLoading, error: profileError } = useDoc<UserProfile>(userDocRef);
+  const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userDocRef);
 
   const [redeemAmount, setRedeemAmount] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');

@@ -38,20 +38,17 @@ export async function requestWithdrawal(
     return { success: false, error: 'Invalid arguments provided.' };
   }
 
-  // 1. Call the Supabase function
   const supabaseUrl = 'https://nwxgjyamiborsgfnzqcj.supabase.co/functions/v1/wallet-transfer';
-  // Note: For production, this should be a secure service_role key stored as an environment variable.
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53eGdqeWFtaWJvcnNnZm56cWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNTM4OTgsImV4cCI6MjA3NTgyOTg5OH0.EtGjkpdoCWEH6YWNr2LjIcFdlsZ-7URjUiLMcRpcfZE'; 
 
   const transferData = {
     to_address: walletAddress,
-    amount: amount,
-    currency: 'inr', // Or make this dynamic if needed
+    amount: amount, // 1 coin = 1 rupee, so amount is correct
+    currency: 'inr', 
     reference_id: `ora_${userId}_${Date.now()}`,
   };
 
   try {
-    // This is where you make the actual call to your Supabase function
     const response = await fetch(supabaseUrl, {
       method: 'POST',
       headers: {
@@ -68,7 +65,6 @@ export async function requestWithdrawal(
     
     const result = await response.json();
 
-    // 2. Atomically update Firestore after a successful API call
     const userDocRef = firestore.collection('users').doc(userId);
     const newTransactionRef = firestore.collection('transactions').doc();
 
@@ -83,17 +79,14 @@ export async function requestWithdrawal(
         throw new Error('Insufficient funds.');
       }
 
-      // Debit the user's balance
       transaction.update(userDocRef, { balance: currentBalance - amount });
 
-      // Create the pending transaction record
       transaction.set(newTransactionRef, {
         userId: userId,
         type: 'Withdrawal',
         amount: -amount,
         date: new Date(),
         status: 'pending',
-        // In a real scenario, you might store the transaction ID from the Supabase response
         referenceId: result.reference_id || transferData.reference_id,
       });
     });
@@ -115,7 +108,6 @@ export async function checkBotScore(actions: string[]) {
     const result = await antiBotProtection({
       userActions: actions,
       timestamp: Date.now(),
-      // In a real app, you would get the user's IP address from the request.
       ipAddress: '127.0.0.1',
     });
     return result;
