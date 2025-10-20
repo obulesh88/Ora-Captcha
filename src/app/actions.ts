@@ -20,7 +20,8 @@ if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-  } catch (error: any) {
+  } catch (error: any)
+    {
     throw new Error(
       'FIREBASE_SERVICE_ACCOUNT_KEY contains invalid JSON: ' + error.message
     );
@@ -35,7 +36,7 @@ export async function requestWithdrawal(
   amount: number
 ) {
   if (!userId || !walletAddress || !amount || amount <= 0) {
-    return { success: false, error: 'Invalid arguments provided.' };
+    return { success: false, error: 'Missing or invalid uid or amount' };
   }
 
   const supabaseUrl = 'https://nwxgjyamiborsgfnzqcj.supabase.co/functions/v1/wallet-transfer';
