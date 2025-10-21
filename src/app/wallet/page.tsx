@@ -17,11 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { requestWithdrawal } from '../actions';
+import { requestWithdrawal, saveWalletAddress } from '../actions';
 
 
 interface UserProfile {
@@ -58,16 +56,12 @@ export default function WalletPage() {
 
   const handleSaveWallet = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !userDocRef) return;
-    if (!newWalletAddress.trim()) {
-      toast({ variant: 'destructive', title: 'Invalid Address', description: 'Please enter a valid wallet address.' });
-      return;
-    }
+    if (!user) return;
 
     setIsSavingWallet(true);
-    const data = { walletAddress: newWalletAddress.trim() };
-    setDoc(userDocRef, data, { merge: true })
-      .then(() => {
+    const result = await saveWalletAddress(user.uid, newWalletAddress);
+    
+    if (result.success) {
         toast({
           title: 'Wallet Address Saved!',
           description: 'Your ORA wallet has been linked.',
@@ -75,17 +69,11 @@ export default function WalletPage() {
         });
         setNewWalletAddress('');
         setShowConnectForm(false);
-      })
-      .catch((error) => {
-       const permissionError = new FirestorePermissionError({
-          path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: data
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-      setIsSavingWallet(false);
-    });
+    } else {
+         toast({ variant: 'destructive', title: 'Save Failed', description: result.message });
+    }
+
+    setIsSavingWallet(false);
   };
 
 
@@ -206,7 +194,7 @@ export default function WalletPage() {
                       type="submit"
                       disabled={isSavingWallet}
                     >
-                      <Wallet className="mr-2 h-5 w-5" />
+                      {isSavingWallet ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Wallet className="mr-2 h-5 w-5" /> }
                       {isSavingWallet ? 'Saving...' : 'Save Wallet Address'}
                     </Button>
                   </CardFooter>
@@ -262,6 +250,7 @@ export default function WalletPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" size="lg" disabled={isRedeeming}>
+                    {isRedeeming ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     {isRedeeming ? 'Processing...' : 'Request Withdrawal'}
                   </Button>
                 </CardFooter>
@@ -273,3 +262,5 @@ export default function WalletPage() {
     </div>
   );
 }
+
+    

@@ -3,24 +3,22 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser } from '@/firebase';
 import CaptchaSolver from "@/components/CaptchaSolver";
 import Header from "@/components/common/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayCircle, Loader2, CheckCircle } from "lucide-react";
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { recordAdReward } from './actions';
 
 export default function Home() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [adWatched, setAdWatched] = useState(false);
   const [canClaimAdReward, setCanClaimAdReward] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -52,51 +50,30 @@ export default function Home() {
     });
   };
 
-  const handleClaimAdReward = () => {
+  const handleClaimAdReward = async () => {
     if (!user || !canClaimAdReward) return;
 
-    const adReward = 3;
-    const userDocRef = doc(firestore, 'users', user.uid);
-    
-    updateDoc(userDocRef, {
-      balance: increment(adReward)
-    }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'update',
-        requestResourceData: { balance: `increment(${adReward})` }
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    setIsClaiming(true);
+    const result = await recordAdReward(user.uid);
 
-    const transactionsColRef = collection(firestore, 'transactions');
-    const transactionData = {
-      userId: user.uid,
-      type: 'Ad Watched',
-      amount: adReward,
-      date: serverTimestamp(),
-      status: 'completed',
-    };
-    addDoc(transactionsColRef, transactionData)
-      .then(() => {
-        toast({
-          title: "Success!",
-          description: `You've earned ${adReward} ORA coins.`,
-          className: 'bg-accent text-accent-foreground',
-        });
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: transactionsColRef.path,
-          operation: 'create',
-          requestResourceData: transactionData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+    if (result.success) {
+      toast({
+        title: "Success!",
+        description: result.message,
+        className: 'bg-accent text-accent-foreground',
       });
-      
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Claim Failed',
+        description: result.message,
+      });
+    }
+
     // Reset state
     setAdWatched(false);
     setCanClaimAdReward(false);
+    setIsClaiming(false);
   };
 
 
@@ -134,9 +111,9 @@ export default function Home() {
                   Watch Rewarded Ad (3 ORA Coins)
                 </Button>
               ) : (
-                <Button className="w-full" size="lg" onClick={handleClaimAdReward} disabled={!canClaimAdReward}>
-                  <CheckCircle className="mr-2 h-5 w-5" />
-                  {canClaimAdReward ? 'Claim Ad Reward' : 'Wait to Claim...'}
+                <Button className="w-full" size="lg" onClick={handleClaimAdReward} disabled={!canClaimAdReward || isClaiming}>
+                  {isClaiming ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" /> }
+                  {isClaiming ? 'Claiming...' : (canClaimAdReward ? 'Claim Ad Reward' : 'Wait to Claim...')}
                 </Button>
               )}
             </CardContent>
@@ -146,3 +123,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

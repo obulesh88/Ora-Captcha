@@ -6,16 +6,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import Image from "next/image";
-import { RefreshCw, Send, ShieldAlert, ShieldCheck, Captions, CheckCircle } from "lucide-react";
+import { RefreshCw, Send, ShieldAlert, ShieldCheck, Captions, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { checkBotScore } from "@/app/actions";
+import { checkBotScore, recordCaptchaSuccess } from "@/app/actions";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { useUser, useFirestore } from "@/firebase";
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
-
+import { useUser } from "@/firebase";
 
 const generateCaptchaText = (length = 6) => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -36,10 +32,10 @@ export default function CaptchaSolver() {
   const [isFlaggedAsBot, setIsFlaggedAsBot] = useState(false);
   const [captchaCorrect, setCaptchaCorrect] = useState(false);
   const [canClaim, setCanClaim] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
 
   const { toast } = useToast();
   const { user } = useUser();
-  const firestore = useFirestore();
 
   const generateNewCaptcha = useCallback(() => {
     const newText = generateCaptchaText();
@@ -117,47 +113,27 @@ export default function CaptchaSolver() {
     setIsSubmitting(false);
   };
 
-  const handleClaimReward = () => {
+  const handleClaimReward = async () => {
     if (!user) return;
-    const earnedCoins = 2;
-    const userDocRef = doc(firestore, 'users', user.uid);
-    
-    updateDoc(userDocRef, {
-        balance: increment(earnedCoins)
-    }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'update',
-        requestResourceData: { balance: `increment(${earnedCoins})` }
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    setIsClaiming(true);
 
-    const transactionsColRef = collection(firestore, 'transactions');
-    const transactionData = {
-        userId: user.uid,
-        type: 'Captcha Solved',
-        amount: earnedCoins,
-        date: serverTimestamp(),
-        status: 'completed',
-    };
-    addDoc(transactionsColRef, transactionData)
-      .then(() => {
-        toast({
-          title: "Success!",
-          description: `You've earned ${earnedCoins} ORA coins.`,
-          className: "bg-accent text-accent-foreground",
-        });
-        generateNewCaptcha();
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: transactionsColRef.path,
-          operation: 'create',
-          requestResourceData: transactionData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+    const result = await recordCaptchaSuccess(user.uid);
+
+    if (result.success) {
+      toast({
+        title: "Success!",
+        description: result.message,
+        className: "bg-accent text-accent-foreground",
       });
+      generateNewCaptcha();
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Claim Failed",
+        description: result.message,
+      });
+    }
+    setIsClaiming(false);
   }
 
   return (
@@ -243,18 +219,13 @@ export default function CaptchaSolver() {
             </div>
             {!captchaCorrect ? (
               <Button type="submit" disabled={isSubmitting || isCheckingBot || !userInput}>
-                {isSubmitting ? (
-                  "Verifying..."
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" /> Submit
-                  </>
-                )}
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" /> }
+                {isSubmitting ? "Verifying..." : "Submit"}
               </Button>
             ) : (
-              <Button type="button" onClick={handleClaimReward} disabled={!canClaim}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  {canClaim ? 'Claim Reward' : 'Wait to Claim...'}
+              <Button type="button" onClick={handleClaimReward} disabled={!canClaim || isClaiming}>
+                  {isClaiming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" /> }
+                  {isClaiming ? 'Claiming...' : (canClaim ? 'Claim Reward' : 'Wait to Claim...')}
               </Button>
             )}
           </CardFooter>
@@ -263,3 +234,5 @@ export default function CaptchaSolver() {
     </Card>
   );
 }
+
+    

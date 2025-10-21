@@ -14,17 +14,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy } from 'lucide-react';
+import { completeWithdrawalVerification } from '../actions';
 
 interface Transaction {
   id: string;
@@ -82,42 +81,26 @@ export default function HistoryPage() {
     });
   };
   
-  const handleVerify = (transaction: Transaction) => {
-    if (!user || !firestore) return;
-
+  const handleVerify = async (transaction: Transaction) => {
     setVerifying(transaction.id);
-    
-    // Simulate checking an external API
-    setTimeout(() => {
-      const transactionRef = doc(firestore, 'transactions', transaction.id);
-      
-      const updateData = { status: 'completed' };
 
-      updateDoc(transactionRef, updateData)
-        .then(() => {
-           toast({
-            title: "Verification Complete",
-            description: "Withdrawal has been marked as completed.",
-            className: "bg-accent text-accent-foreground",
-          });
-        })
-        .catch((error) => {
-          const permissionError = new FirestorePermissionError({
-            path: transactionRef.path,
-            operation: 'update',
-            requestResourceData: updateData
-          });
-          errorEmitter.emit('permission-error', permissionError);
-          toast({
-            variant: "destructive",
-            title: "Verification Failed",
-            description: "Could not update transaction status.",
-          });
-        }).finally(() => {
-          setVerifying(null);
-        });
+    const result = await completeWithdrawalVerification(transaction.id);
 
-    }, 2000); // Simulate a 2-second API call
+    if (result.success) {
+      toast({
+        title: "Verification Complete",
+        description: "Withdrawal has been marked as completed.",
+        className: "bg-accent text-accent-foreground",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: result.message,
+      });
+    }
+
+    setVerifying(null);
   };
 
   if (userLoading || transactionsLoading) {

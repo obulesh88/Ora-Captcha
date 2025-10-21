@@ -120,3 +120,103 @@ export async function checkBotScore(userActions: string[]) {
     return { botScore: 0, explanation: "Error checking bot score" };
   }
 }
+
+
+export async function recordCaptchaSuccess(userId: string) {
+    const db = getAdminFirestore();
+    const userDocRef = db.collection('users').doc(userId);
+    const transactionsColRef = db.collection('transactions');
+    const earnedCoins = 2;
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists) {
+                throw new Error("User not found.");
+            }
+            
+            transaction.update(userDocRef, {
+                balance: admin.firestore.FieldValue.increment(earnedCoins)
+            });
+
+            const newTransactionRef = transactionsColRef.doc();
+            transaction.set(newTransactionRef, {
+                userId: userId,
+                type: 'Captcha Solved',
+                amount: earnedCoins,
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                status: 'completed',
+            });
+        });
+        return { success: true, message: `You've earned ${earnedCoins} ORA coins.` };
+    } catch (error: any) {
+        console.error("Captcha success transaction failed:", error);
+        return { success: false, message: error.message || "Could not record captcha success." };
+    }
+}
+
+export async function recordAdReward(userId: string) {
+    const db = getAdminFirestore();
+    const userDocRef = db.collection('users').doc(userId);
+    const transactionsColRef = db.collection('transactions');
+    const adReward = 3;
+
+    try {
+        await db.runTransaction(async (transaction) => {
+             const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists) {
+                throw new Error("User not found.");
+            }
+
+            transaction.update(userDocRef, {
+                balance: admin.firestore.FieldValue.increment(adReward)
+            });
+
+            const newTransactionRef = transactionsColRef.doc();
+            transaction.set(newTransactionRef, {
+                userId: userId,
+                type: 'Ad Watched',
+                amount: adReward,
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                status: 'completed',
+            });
+        });
+        return { success: true, message: `You've earned ${adReward} ORA coins.` };
+    } catch (error: any) {
+        console.error("Ad reward transaction failed:", error);
+        return { success: false, message: error.message || "Could not record ad reward." };
+    }
+}
+
+export async function saveWalletAddress(userId: string, walletAddress: string) {
+    if (!walletAddress.trim()) {
+        return { success: false, message: 'Please enter a valid wallet address.' };
+    }
+
+    const db = getAdminFirestore();
+    const userDocRef = db.collection('users').doc(userId);
+
+    try {
+        await userDocRef.update({ walletAddress: walletAddress.trim() });
+        return { success: true, message: 'Wallet Address Saved!' };
+    } catch (error: any) {
+        console.error("Save wallet address failed:", error);
+        return { success: false, message: error.message || "Could not save wallet address." };
+    }
+}
+
+
+export async function completeWithdrawalVerification(transactionId: string) {
+    const db = getAdminFirestore();
+    const transactionRef = db.collection('transactions').doc(transactionId);
+
+    try {
+        await transactionRef.update({ status: 'completed' });
+        return { success: true, message: 'Verification Complete' };
+    } catch (error: any) {
+        console.error("Withdrawal verification failed:", error);
+        return { success: false, message: error.message || "Could not update transaction status." };
+    }
+}
+
+    
