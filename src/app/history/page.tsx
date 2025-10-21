@@ -16,7 +16,7 @@ import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,9 @@ export default function HistoryPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [verifying, setVerifying] = useState<string | null>(null);
+  
+  // Local state for transactions to enable optimistic updates
+  const [localTransactions, setLocalTransactions] = useState<Transaction[] | null>(null);
 
   const transactionsQuery = useMemo(() => {
     if (!user) return null;
@@ -68,9 +71,17 @@ export default function HistoryPage() {
   }, [user, firestore]);
 
   const {
-    data: transactions,
+    data: firestoreTransactions,
     loading: transactionsLoading,
   } = useCollection<Transaction>(transactionsQuery);
+
+  // Sync local state with Firestore data
+  useEffect(() => {
+    if (firestoreTransactions) {
+      setLocalTransactions(firestoreTransactions);
+    }
+  }, [firestoreTransactions]);
+
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -83,6 +94,13 @@ export default function HistoryPage() {
   
   const handleVerify = async (transaction: Transaction) => {
     setVerifying(transaction.id);
+
+    // Optimistic UI update
+    setLocalTransactions(prevTransactions =>
+        prevTransactions?.map(t =>
+            t.id === transaction.id ? { ...t, status: 'completed' } : t
+        ) || null
+    );
 
     const result = await completeWithdrawalVerification(transaction.id);
 
@@ -98,12 +116,16 @@ export default function HistoryPage() {
         title: "Verification Failed",
         description: result.message,
       });
+      // Revert optimistic update on failure
+      setLocalTransactions(firestoreTransactions);
     }
 
     setVerifying(null);
   };
 
-  if (userLoading || transactionsLoading) {
+  const isLoading = userLoading || transactionsLoading;
+
+  if (isLoading && !localTransactions) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -140,8 +162,8 @@ export default function HistoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions && transactions.length > 0 ? (
-                transactions.map((transaction) => (
+              {localTransactions && localTransactions.length > 0 ? (
+                localTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>{transaction.type}</TableCell>
                     <TableCell>
@@ -220,5 +242,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-
-    
