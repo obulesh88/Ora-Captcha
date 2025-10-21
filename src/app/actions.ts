@@ -1,29 +1,28 @@
 
 "use server";
 
-import { doc, runTransaction, collection, serverTimestamp, getFirestore, initializeApp, getApps, App, cert } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
 import { antiBotProtection } from '@/ai/flows/anti-bot-protection';
+
+const serviceAccount = {
+  "type": "service_account",
+  "project_id": "captcha-c5478",
+  "private_key_id": "c2617b4ca7e453d701f30c4b7c05eb5a53ceb832",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDJuhkIH5KUWUQk\nQHD0EtMug71SMiJ8YFPpDVhL2q3n/L5ctqJZhv4hW4x9C2mW32uVt1xOMyIVokow\n2o0P/GU5+T04JxF105u4KKishSgMEHxxXXdXYjdFS3SKjy0xOBsPrXbQG4/c5fvb\nwy+dXnbgB0j4RxOS8GHPDFOp+3g/N+KMy512IQMy24qXzfoVtLFKXZS5Eg4mg0tb\nD+gZTyBkW9FGujWTQyXquMg1czZJYnmNmZFZRG5/4qjlDpBheITzRTSWQKeoFO65\nPqEXPunZCTPXV5TJZmf3OfBcMmqmdn6YgZG0xwY9qiqzYdx11r+tWLOVTHPXsC/c\nTWcvFtHVAgMBAAECggEABnXH9u9h54/LQ5jvtRVEP41W+wKhgZepIEG95eH5J0B8\nDSaJIPJWgZV3tIpwxXTesmL2mQeArC4wD4v0MAKecEKX0AxKPhp6dmWQ70NtYqOF\nhLDgUUNTL0wpDYXjxdt83F3q++OiEgoobGN+Cx1bE7YQA2ltSkuZ6kJEDKHBuk5+\nhZ5M6S0XMl2HdgFFhebittwmvhoohcwPGDqPGlQuW1D9NVgIKtWmCX/U96KPeDFv\nV62ZsQQouFh577Z/mYpxeWMRRBtPCv/QCM6UhgoX12nTvWTut2RsVurk5/LgWb9K\nZPATXfR34eJ1OH6NvbPEh0wBL+A3VQd8U7OAGWj3wQKBgQDw7OMd4/TonWV/V9gx\n7W9GDt1h1VXJgMQzscUjPqKU1UZqHqndVajOFJgwulafNgUPqQ39pwNWjbOGZ9eK\noZLSpVvNQhKnmF4Md1WO6tMHJzEyLTswFqGLJok1tCVI+oVTvkDJ6RkXEG66Fws9\nDQsc2haFgS8vAwrwymPG4UVOQQKBgQDWWVXgwmI3YDiO2/ilGSBqQdRZxPqNiMwg\ncGbAuHxXafXWmms3ah3ZsZxu7W58Na7EqR5kgeDDeeP2VzoYQT++lXJGKQVk3lyW\nAcwfPbKOMa+dAZQCWE5FtGTCPPtRGxOjpK2bqqTGfBRdIXF1oaLGpfCcDkVvXu3X\nJyhgnLrGlQKBgHc1/7tOjGR9XTeBk+xAfArCWDCMiwJFwM+DavRhjbjvPwRLX+mw\n9PHjptqVmT72T9LL56xW84PkYaxjvXdPM4MfZylNREXBUugANEmfUAP+FI2ra9oD\nmLNtwf7cwIY3z7j8Lrq5qDyNWPyjYmA3EASatQIiReKRMtyqiGxkExMBAoGANQ57\n4Vx8LzTUCxiL3WHw0hxlUaseUbZQwJ7R8FY6APErdulWLKtJpD8Ad7yxonEvR2KN\nMVesqPYc5TcGHEbaXnRjitZQjX008bSUMA93iRbnXzeqyUHObhaO8j1h/9tx6wmy\nJ1v/2VmRONQ0X2eZAQ7GFfq6WSzoNl9s8S0aVlkCgYBguMCSpO0T0sYBsCqFms2z\nLyxpa4Ru9mGcIOcngCbFbWD/5YB9rjiKguWV9w/QfhFk/z5r9ruCJUN3/ASo79zv\nWH0WbaIbTtCyPEQjPJnnnWKjNdHqzrJjcN5uV0QeDra8kFY62z4Z6CW3jZhQOWF0\n1gN+GrcyoUGxrG4Zf+G34w==\n-----END PRIVATE KEY-----\n".replace(/\\n/g, '\n'),
+  "client_email": "firebase-adminsdk-fbsvc@captcha-c5478.iam.gserviceaccount.com",
+};
+
 
 // Helper function to initialize Firebase Admin SDK
 function getAdminFirestore() {
   if (admin.apps.length === 0) {
-    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!serviceAccountString) {
-      throw new Error('The FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
-    }
-    
     try {
-      // Decode the Base64 encoded service account
-      const decodedServiceAccount = Buffer.from(serviceAccountString, 'base64').toString('utf-8');
-      const serviceAccount = JSON.parse(decodedServiceAccount);
-      
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
     } catch (error: any) {
-       console.error("Failed to parse or use FIREBASE_SERVICE_ACCOUNT:", error.message);
-       throw new Error("Firebase Admin initialization failed. Check your FIREBASE_SERVICE_ACCOUNT environment variable.");
+       console.error("Failed to initialize Firebase Admin:", error.message);
+       throw new Error("Firebase Admin initialization failed. Check the hardcoded service account credentials.");
     }
   }
   return admin.firestore();
