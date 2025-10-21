@@ -3,6 +3,7 @@
 
 import { doc, runTransaction, collection, serverTimestamp, getFirestore, initializeApp, getApps, App, cert } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
+import { antiBotProtection } from '@/ai/flows/anti-bot-protection';
 
 // Helper function to initialize Firebase Admin SDK
 function getAdminFirestore() {
@@ -91,3 +92,18 @@ export async function requestWithdrawal(userId: string, walletAddress: string, a
     return { success: false, message: error.message || "Could not complete your withdrawal request." };
   }
 }
+
+export async function checkBotScore(userActions: string[]) {
+  try {
+    const result = await antiBotProtection({
+      userActions,
+      timestamp: Date.now(),
+      ipAddress: "127.0.0.1", // In a real app, you'd get this from the request
+    });
+    return result;
+  } catch (error) {
+    console.error("Error checking bot score:", error);
+    return { botScore: 0, explanation: "Error checking bot score" };
+  }
+}
+
