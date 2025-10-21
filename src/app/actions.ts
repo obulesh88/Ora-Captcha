@@ -126,7 +126,7 @@ export async function recordCaptchaSuccess(userId: string) {
     const db = getAdminFirestore();
     const userDocRef = db.collection('users').doc(userId);
     const transactionsColRef = db.collection('transactions');
-    const earnedCoins = 2;
+    const earnedCoins = 100;
 
     try {
         await db.runTransaction(async (transaction) => {
