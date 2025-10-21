@@ -5,7 +5,6 @@ import { antiBotProtection } from '@/ai/flows/anti-bot-protection';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Correctly initialize Firebase Admin SDK using environment variables
 if (!admin.apps.length) {
   try {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
