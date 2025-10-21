@@ -14,7 +14,10 @@ function getAdminFirestore() {
     }
     
     try {
-      const serviceAccount = JSON.parse(serviceAccountString);
+      // Decode the Base64 encoded service account
+      const decodedServiceAccount = Buffer.from(serviceAccountString, 'base64').toString('utf-8');
+      const serviceAccount = JSON.parse(decodedServiceAccount);
+      
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
