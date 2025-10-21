@@ -16,11 +16,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Wallet, IndianRupee, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { useUser, useAuth, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, setDoc, runTransaction } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { requestWithdrawal } from '../actions';
+
 
 interface UserProfile {
   id: string;
@@ -31,7 +33,6 @@ interface UserProfile {
 
 export default function WalletPage() {
   const { user, loading } = useUser();
-  const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
   
@@ -90,7 +91,7 @@ export default function WalletPage() {
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !firestore || !userDocRef) return;
+    if (!user || !walletAddress) return;
   
     const amount = parseInt(redeemAmount, 10);
   
@@ -98,59 +99,33 @@ export default function WalletPage() {
       toast({ variant: 'destructive', title: 'Invalid Amount', description: 'The minimum withdrawal amount is 1 ORA coin.' });
       return;
     }
+
+    if (balance < amount) {
+        toast({ variant: 'destructive', title: 'Insufficient Funds', description: 'You do not have enough ORA coins.' });
+        return;
+    }
     
     setIsRedeeming(true);
 
-    try {
-        await runTransaction(firestore, async (transaction) => {
-            const userDoc = await transaction.get(userDocRef);
-            if (!userDoc.exists()) {
-                throw new Error("User does not exist!");
-            }
+    const result = await requestWithdrawal(user.uid, walletAddress, amount);
 
-            const currentBalance = userDoc.data().balance || 0;
-            if (currentBalance < amount) {
-                throw new Error("Insufficient funds.");
-            }
-
-            // Hold funds by debiting balance immediately
-            transaction.update(userDocRef, { balance: increment(-amount) });
-            
-            // Create a unique reference ID for the withdrawal
-            const newTransactionRef = doc(collection(firestore, 'transactions'));
-            const referenceId = `WID-${Date.now()}-${newTransactionRef.id.slice(0, 6)}`;
-
-            // Create the pending transaction record
-            transaction.set(newTransactionRef, {
-                userId: user.uid,
-                type: 'Withdrawal',
-                amount: -amount,
-                date: serverTimestamp(),
-                status: 'pending',
-                referenceId: referenceId,
-            });
-        });
-
-        toast({
-            title: 'Withdrawal Request Submitted!',
-            description: `Your request for ${amount} ORA is now pending.`,
-            className: 'bg-accent text-accent-foreground',
-        });
-        setRedeemAmount('');
-        router.push('/history');
-
-    } catch (error: any) {
-        // We don't create a permission error here because runTransaction
-        // does not expose enough context for a detailed error.
-        // The individual operations inside would be caught by other handlers if they fail.
-        toast({
-            variant: 'destructive',
-            title: 'Request Failed',
-            description: error.message || "Could not complete your withdrawal request.",
-        });
-    } finally {
-        setIsRedeeming(false);
+    if (result.success) {
+      toast({
+        title: 'Withdrawal Request Submitted!',
+        description: result.message,
+        className: 'bg-accent text-accent-foreground',
+      });
+      setRedeemAmount('');
+      router.push('/history');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Request Failed',
+        description: result.message,
+      });
     }
+
+    setIsRedeeming(false);
   };
 
 
